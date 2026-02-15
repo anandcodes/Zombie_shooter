@@ -30,4 +30,6 @@ const config = {
     }
 };
 
-const game = new Phaser.Game(config);
+window.addEventListener('load', () => {
+    const game = new Phaser.Game(config);
+});
