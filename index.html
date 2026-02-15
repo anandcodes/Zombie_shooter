@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>Zombie Killer Arena</title>
+    <meta name="description"
+        content="Zombie Killer Arena — A top-down arcade shooter built with Phaser.js. Survive endless waves of zombies, unlock weapons, and upgrade your survivor!">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #111;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100vw;
+            height: 100vh;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <script src="src/scenes/BootScene.js"></script>
+    <script src="src/scenes/StartScene.js"></script>
+    <script src="src/scenes/LevelSelectScene.js"></script>
+    <script src="src/scenes/UpgradeShopScene.js"></script>
+    <script src="src/scenes/LeaderboardScene.js"></script>
+    <script src="src/scenes/GameScene.js"></script>
+    <script src="src/scenes/UIScene.js"></script>
+    <script src="src/main.js"></script>
+</body>
+
+</html>
