@@ -197,16 +197,22 @@ class GameScene extends Phaser.Scene {
     }
 
     create() {
-        const worldWidth = 8000;
+        const worldWidth = 4000;
         const worldHeight = 600;
         this.worldWidth = worldWidth;
         this.worldHeight = worldHeight;
         this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
 
-        // Visual Overhaul: Bloom
+        // Visual Overhaul: Bloom + Lights
         if (this.cameras.main.postFX) {
-            this.cameras.main.postFX.addBloom({ intensity: 1.2, blurStrength: 1.0 });
+            this.cameras.main.postFX.addBloom({ intensity: 1.5, blurStrength: 1.2 });
+            this.cameras.main.postFX.addVignette(0.5, 0.5, 0.7);
         }
+
+        // Setup Lights
+        this.lights.enable();
+        this.lights.setAmbientColor(0x333333); // Dark ambient
+        this.playerLight = this.lights.addLight(0, 0, 400, 0xffffff, 2);
 
         // ===== ENVIRONMENT LAYERS =====
         this.createEnvironment(worldWidth, worldHeight);
@@ -222,6 +228,7 @@ class GameScene extends Phaser.Scene {
 
         // Phase 2: Power drops
         this.powerDrops = this.physics.add.group({ classType: Phaser.Physics.Arcade.Sprite, maxSize: 10 });
+        this.ammoDrops = this.physics.add.group({ classType: Phaser.Physics.Arcade.Sprite, maxSize: 10 });
 
         // ===== PARTICLE SYSTEMS =====
         this.bloodParticles = this.add.particles(0, 0, 'blood_particle', {
@@ -328,7 +335,9 @@ class GameScene extends Phaser.Scene {
         this.physics.add.overlap(this.player, this.zombies, this.zombieHitPlayer, null, this);
         this.physics.add.overlap(this.player, this.xpOrbs, this.collectXP, null, this);
         this.physics.add.overlap(this.player, this.coins, this.collectCoin, null, this);
+        this.physics.add.overlap(this.player, this.coins, this.collectCoin, null, this);
         this.physics.add.overlap(this.player, this.powerDrops, this.collectPowerDrop, null, this);
+        this.physics.add.overlap(this.player, this.ammoDrops, this.collectAmmo, null, this);
 
         // Level manager (Phase 3 — replaces wave manager)
         if (this.currentLevel.isBoss) {
@@ -356,7 +365,7 @@ class GameScene extends Phaser.Scene {
 
         // Base ground - tileSprite with main ground texture
         const ground = this.add.tileSprite(worldWidth / 2, worldHeight / 2, worldWidth, worldHeight, 'ground');
-        ground.setDepth(0).setTint(groundTint);
+        ground.setDepth(0).setTint(groundTint).setPipeline('Light2D');
 
         // Overlay with varied ground patches for visual interest
         const groundVariants = ['ground_dark', 'ground_cracked'];
@@ -414,7 +423,8 @@ class GameScene extends Phaser.Scene {
             this.add.image(rx, ry, 'rock').setDepth(3)
                 .setScale(0.5 + Math.random() * 1.2)
                 .setAngle(Phaser.Math.Between(0, 360))
-                .setAlpha(0.7 + Math.random() * 0.3);
+                .setAlpha(0.7 + Math.random() * 0.3)
+                .setPipeline('Light2D');
         }
 
         // Dead trees
@@ -423,7 +433,8 @@ class GameScene extends Phaser.Scene {
             const ty = Phaser.Math.Between(80, worldHeight - 80);
             this.add.image(tx, ty, 'dead_tree').setDepth(4)
                 .setScale(0.8 + Math.random() * 0.5)
-                .setAlpha(0.6 + Math.random() * 0.3);
+                .setAlpha(0.6 + Math.random() * 0.3)
+                .setPipeline('Light2D');
         }
 
         // Fence segments
@@ -435,7 +446,8 @@ class GameScene extends Phaser.Scene {
                 const offX = fenceAngle === 0 ? j * 30 : 0;
                 const offY = fenceAngle === 90 ? j * 30 : 0;
                 this.add.image(fx + offX, fy + offY, 'fence').setDepth(4)
-                    .setAngle(fenceAngle).setAlpha(0.7);
+                    .setAngle(fenceAngle).setAlpha(0.7)
+                    .setPipeline('Light2D');
             }
         }
 
@@ -447,7 +459,9 @@ class GameScene extends Phaser.Scene {
             this.add.image(lx, ly, 'player_glow')
                 .setDepth(0.5).setScale(3).setAlpha(0.15).setTint(0xffddaa);
             // Lamppost itself
-            this.add.image(lx, ly, 'lamppost').setDepth(5).setAlpha(0.85);
+            this.add.image(lx, ly, 'lamppost').setDepth(5).setAlpha(0.85).setPipeline('Light2D');
+            // Add actual light source
+            this.lights.addLight(lx, ly - 20, 180, 0xffdd88, 1.2);
         }
 
         // World border visual — dark edge ring
@@ -459,7 +473,7 @@ class GameScene extends Phaser.Scene {
     }
 
     createPlayer(x, y) {
-        this.player = this.physics.add.sprite(x, y, 'player');
+        this.player = this.physics.add.sprite(x, y, 'player').setPipeline('Light2D');
         this.player.setCollideWorldBounds(true);
         this.player.setDepth(10);
         this.player.body.setCircle(12, 20, 12);
@@ -603,6 +617,12 @@ class GameScene extends Phaser.Scene {
             this.playerGlow.y = this.player.y;
             // Subtle pulse
             this.playerGlow.setAlpha(0.15 + Math.sin(time * 0.003) * 0.05);
+        }
+
+        // Update Light Position
+        if (this.playerLight) {
+            this.playerLight.x = this.player.x;
+            this.playerLight.y = this.player.y;
         }
 
         // Slowly drift fog layers
@@ -787,7 +807,11 @@ class GameScene extends Phaser.Scene {
         this.tweens.add({ targets: muzzle, alpha: 0, scale: 0.5, duration: 80, onComplete: () => muzzle.destroy() });
 
         this.playSound('shoot');
-        if (weapon.ammo === 0 && weapon.ammo !== Infinity) this.switchWeapon(0);
+        this.playSound('shoot');
+        if (weapon.ammo === 0 && weapon.ammo !== Infinity) {
+            this.switchWeapon(0);
+            this.showDamageNumber(this.player.x, this.player.y - 40, 'NO AMMO!', '#ff0000');
+        }
     }
 
     // ==================== ZOMBIE SYSTEM ====================
@@ -841,6 +865,7 @@ class GameScene extends Phaser.Scene {
         zombie.xpReward = xpReward; zombie.zombieType = zombieType;
         zombie.isElite = false; zombie.eliteModifier = null;
         zombie.clearTint(); zombie.setAlpha(1).setScale(1);
+        zombie.setPipeline('Light2D');
         zombie.isBossZombie = false; // Reset boss flag for pooled objects
 
         // Phase 2: Elite zombie chance (after wave 3)
@@ -975,6 +1000,9 @@ class GameScene extends Phaser.Scene {
 
         // Phase 2: Power drop
         if (Math.random() < this.powerDropChance) this.spawnPowerDrop(zombie.x, zombie.y);
+
+        // Ammo Drop (5% chance)
+        if (Math.random() < 0.05) this.spawnAmmoDrop(zombie.x, zombie.y);
 
         const scoreGain = Math.floor(10 * this.wave * this.comboMultiplier * (zombie.zombieType === 'boss' ? 10 : zombie.zombieType === 'tank' ? 3 : 1));
         this.score += scoreGain; this.zombiesKilledThisWave++; this.totalZombiesKilled++;
@@ -1182,7 +1210,7 @@ class GameScene extends Phaser.Scene {
 
         const boss = this.zombies.create(bx, by, 'zombie_boss');
         if (!boss) return;
-        boss.setDepth(9).setScale(1.8);
+        boss.setDepth(9).setScale(1.8).setPipeline('Light2D');
 
         // Readme: bossHP = 600 + (levelId * 120)
         const lvlId = this.currentLevel.level || 5;
@@ -1595,6 +1623,7 @@ class GameScene extends Phaser.Scene {
         drop.setActive(true).setVisible(true).setDepth(4); drop.body.enable = true;
         drop.powerType = type;
         drop.setBlendMode(Phaser.BlendModes.ADD);
+        drop.setPipeline('Light2D');
         // Pulse animation
         this.tweens.add({ targets: drop, scaleX: 1.3, scaleY: 1.3, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
         // Timeout — disappear after 8s
@@ -1634,6 +1663,41 @@ class GameScene extends Phaser.Scene {
         }
         this.events.emit('powerDeactivated');
         this.activePower = null;
+    }
+
+    spawnAmmoDrop(x, y) {
+        const drop = this.ammoDrops.get(x, y, 'ammo_box');
+        if (!drop) return;
+        drop.setActive(true).setVisible(true).setDepth(4); drop.body.enable = true;
+        drop.setBlendMode(Phaser.BlendModes.NORMAL);
+        this.tweens.add({ targets: drop, y: drop.y - 5, duration: 800, yoyo: true, repeat: -1 });
+        drop.spawnTime = this.time.now;
+        this.time.delayedCall(15000, () => { if (drop.active) { drop.setActive(false).setVisible(false); drop.body.enable = false; } });
+    }
+
+    collectAmmo(player, drop) {
+        if (!drop.active) return;
+        drop.setActive(false).setVisible(false); drop.body.enable = false;
+
+        // Refill 30% of max ammo for all unlocked weapons (except pistol)
+        let refilled = false;
+        this.unlockedWeapons.forEach(key => {
+            const w = this.weapons[key];
+            if (w.maxAmmo !== Infinity) {
+                const amount = Math.floor(w.maxAmmo * 0.3);
+                if (w.ammo < w.maxAmmo) {
+                    w.ammo = Math.min(w.ammo + amount, w.maxAmmo);
+                    refilled = true;
+                }
+            }
+        });
+
+        if (refilled) {
+            this.showDamageNumber(player.x, player.y - 30, 'AMMO +', '#ddccaa');
+            this.playSound('upgrade'); // Reuse upgrade sound or coin sound
+        } else {
+            this.showDamageNumber(player.x, player.y - 30, 'MAX AMMO', '#ffffff');
+        }
     }
 
     // ==================== PHASE 2: SYSTEM 5 — ARENA EVENTS ====================
@@ -1684,7 +1748,7 @@ class GameScene extends Phaser.Scene {
                 for (let i = 0; i < 2; i++) {
                     const tx = this.player.x + Phaser.Math.Between(-150, 150);
                     const ty = this.player.y + Phaser.Math.Between(-150, 150);
-                    const turretSprite = this.add.image(tx, ty, 'turret').setDepth(5);
+                    const turretSprite = this.add.image(tx, ty, 'turret').setDepth(5).setPipeline('Light2D');
                     this.turrets.push({ sprite: turretSprite, x: tx, y: ty, lastFire: 0 });
                 }
                 break;

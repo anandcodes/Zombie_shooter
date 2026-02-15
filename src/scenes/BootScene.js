@@ -495,6 +495,17 @@ class BootScene extends Phaser.Scene {
         // Coin Magnet — gold
         this._makePowerDrop('power_magnet', 0xffaa33, 0xcc8800, '⊕');
 
+        // Ammo Box — military green
+        const ab = this.make.graphics({ add: false });
+        ab.fillStyle(0x335533, 1); // Box body
+        ab.fillRoundedRect(0, 4, 24, 16, 2);
+        ab.fillStyle(0x224422, 1); // Darker side
+        ab.fillRect(0, 4, 6, 16);
+        ab.fillStyle(0xddccaa, 1); // Label
+        ab.fillRect(8, 8, 12, 8);
+        ab.generateTexture('ammo_box', 24, 24);
+        ab.destroy();
+
         // ============================================================
         //  PHASE 2 — Arena Event Textures
         // ============================================================
