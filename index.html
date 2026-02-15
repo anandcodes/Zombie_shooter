@@ -35,13 +35,24 @@
 </head>
 
 <body>
+    <div id="error-console"
+        style="position: fixed; top: 0; left: 0; width: 100%; background: rgba(255,0,0,0.8); color: white; padding: 10px; display: none; z-index: 9999; font-family: monospace;">
+    </div>
+    <script>
+        window.onerror = function (msg, url, lineNo, columnNo, error) {
+            var errorConsole = document.getElementById('error-console');
+            errorConsole.style.display = 'block';
+            errorConsole.innerHTML += 'Error: ' + msg + '<br>URL: ' + url + '<br>Line: ' + lineNo + '<br>Column: ' + columnNo + '<br>Stack: ' + (error ? error.stack : 'N/A') + '<br><hr>';
+            return false;
+        };
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-    <script src="src/scenes/BootScene.js"></script>
+    <script src="src/scenes/BootSceneV2.js"></script>
     <script src="src/scenes/StartScene.js"></script>
     <script src="src/scenes/LevelSelectScene.js"></script>
     <script src="src/scenes/UpgradeShopScene.js"></script>
     <script src="src/scenes/LeaderboardScene.js"></script>
-    <script src="src/scenes/GameScene.js"></script>
+    <script src="src/scenes/GameSceneV2.js"></script>
     <script src="src/scenes/UIScene.js"></script>
     <script src="src/scenes/TutorialScene.js"></script>
     <script src="src/main.js"></script>

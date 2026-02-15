@@ -495,6 +495,12 @@ class BootScene extends Phaser.Scene {
         // Coin Magnet — gold
         this._makePowerDrop('power_magnet', 0xffaa33, 0xcc8800, '⊕');
 
+        // Phase 5: Weapon Mod Power-up Textures
+        this._makePowerDrop('power_ricochet', 0xdddddd, 0xaaaaaa, ''); // Grey/Silver
+        this._makePowerDrop('power_vampiric', 0xaa0033, 0xff0000, ''); // Dark Red
+        this._makePowerDrop('power_frostbite', 0x00aaff, 0x00ffff, ''); // Cyan
+        this._makePowerDrop('power_spread', 0xffaa00, 0xffff00, '');    // Orange/Gold
+
         // Ammo Box — military green
         const ab = this.make.graphics({ add: false });
         ab.fillStyle(0x335533, 1); // Box body
@@ -856,7 +862,9 @@ class BootScene extends Phaser.Scene {
         mm.fillStyle(0xff0000, 1); mm.fillCircle(4, 4, 4);
         mm.generateTexture('mm_enemy', 8, 8);
 
-        mm.clear(); mm.fillStyle(0xffff00, 1); mm.fillStar(5, 5, 4, 2, 5);
+        mm.clear();
+        mm.fillStyle(0xffff00, 1);
+        mm.fillRect(0, 0, 10, 10);
         mm.generateTexture('mm_objective', 10, 10);
 
         mm.clear(); mm.fillStyle(0x00ff00, 1); mm.fillRect(3, 0, 2, 8); mm.fillRect(0, 3, 8, 2);
@@ -944,10 +952,7 @@ class BootScene extends Phaser.Scene {
         g.fillCircle(half - 2, half - 2, 3);
         g.generateTexture(key, size, size);
         // Phase 5: Weapon Mod Power-up Textures
-        this._makePowerDrop('power_ricochet', 0xdddddd, 0xaaaaaa, ''); // Grey/Silver
-        this._makePowerDrop('power_vampiric', 0xaa0033, 0xff0000, ''); // Dark Red
-        this._makePowerDrop('power_frostbite', 0x00aaff, 0x00ffff, ''); // Cyan
-        this._makePowerDrop('power_spread', 0xffaa00, 0xffff00, '');    // Orange/Gold
+
 
         g.destroy();
     }

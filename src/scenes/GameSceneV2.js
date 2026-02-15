@@ -532,6 +532,8 @@ class GameScene extends Phaser.Scene {
         borderGraphics.strokeRect(4, 4, worldWidth - 8, worldHeight - 8);
         borderGraphics.lineStyle(3, 0x880000, 0.3);
         borderGraphics.strokeRect(12, 12, worldWidth - 24, worldHeight - 24);
+
+
     }
 
     createPlayer(x, y) {
@@ -732,84 +734,10 @@ class GameScene extends Phaser.Scene {
             }
         }
 
-        if (this.sys.game.device.input.touch && !this.sys.game.device.os.desktop) {
-            // Mobile Controls Setup - moved to corner to avoid overlap
-            this.input.addPointer(2); // Ensure multi-touch
-
-            // Joystick Base (Left Bottom) - Move up slightly to avoid bottom bezel
-            this.joyBase = this.add.circle(100, height - 120, 60, 0x888888).setAlpha(0.3).setDepth(1000).setScrollFactor(0);
-            this.joyThumb = this.add.circle(100, height - 120, 30, 0xcccccc).setAlpha(0.5).setDepth(1001).setScrollFactor(0);
-
-            // Fire Button (Right Bottom) - Larger and clearer
-            this.fireBtn = this.add.circle(width - 80, height - 100, 45, 0xff4444).setAlpha(0.5).setDepth(1000).setScrollFactor(0).setInteractive();
-            this.fireBtnText = this.add.text(width - 80, height - 100, '🔥', { fontSize: '32px' }).setOrigin(0.5).setDepth(1001).setScrollFactor(0);
-
-            // Dash Button (Right Bottom, above Fire)
-            this.dashBtn = this.add.circle(width - 60, height - 200, 35, 0x4444ff).setAlpha(0.5).setDepth(1000).setScrollFactor(0).setInteractive();
-            this.dashBtnText = this.add.text(width - 60, height - 200, '💨', { fontSize: '24px' }).setOrigin(0.5).setDepth(1001).setScrollFactor(0);
-
-            // Switch Weapon Button (Right Center)
-            this.switchBtn = this.add.circle(width - 60, height - 280, 30, 0x44ff44).setAlpha(0.5).setDepth(1000).setScrollFactor(0).setInteractive();
-            this.switchBtnText = this.add.text(width - 60, height - 280, '🔫', { fontSize: '20px' }).setOrigin(0.5).setDepth(1001).setScrollFactor(0);
-
-            // Touch Events
-            this.fireBtn.on('pointerdown', () => { this.isFiring = true; this.fireBtn.setAlpha(0.8); });
-            this.fireBtn.on('pointerup', () => { this.isFiring = false; this.fireBtn.setAlpha(0.5); });
-            this.fireBtn.on('pointerout', () => { this.isFiring = false; this.fireBtn.setAlpha(0.5); });
-
-            this.dashBtn.on('pointerdown', () => {
-                if (this.canDash && !this.isDashing) {
-                    this.dash();
-                    this.dashBtn.setAlpha(0.8);
-                }
-            });
-            this.dashBtn.on('pointerup', () => { this.dashBtn.setAlpha(0.5); });
-
-            this.switchBtn.on('pointerdown', () => {
-                const nextWeaponIndex = (Object.keys(this.weapons).indexOf(this.currentWeaponKey) + 1) % this.unlockedWeapons.length;
-                this.switchWeapon(nextWeaponIndex);
-                this.switchBtn.setAlpha(0.8);
-                // Visual feedback
-                this.tweens.add({ targets: this.switchBtn, scale: 1.2, duration: 100, yoyo: true });
-            });
-            this.switchBtn.on('pointerup', () => this.switchBtn.setAlpha(0.5));
-
-            // Joystick Logic
-            this.input.on('pointermove', (pointer) => {
-                if (!pointer.isDown) return;
-
-                // Left side screen logic for joystick
-                if (pointer.x < width / 2) {
-                    const dist = Phaser.Math.Distance.Between(this.joyBase.x, this.joyBase.y, pointer.x, pointer.y);
-                    const angle = Phaser.Math.Angle.Between(this.joyBase.x, this.joyBase.y, pointer.x, pointer.y);
-
-                    if (dist < 150) { // Drag threshold
-                        const clampDist = Math.min(dist, 60);
-                        this.joyThumb.x = this.joyBase.x + Math.cos(angle) * clampDist;
-                        this.joyThumb.y = this.joyBase.y + Math.sin(angle) * clampDist;
-
-                        // Fake WASD keys
-                        this.joyKeys = {
-                            left: { isDown: Math.cos(angle) < -0.3 },
-                            right: { isDown: Math.cos(angle) > 0.3 },
-                            up: { isDown: Math.sin(angle) < -0.3 },
-                            down: { isDown: Math.sin(angle) > 0.3 }
-                        };
-                    }
-                }
-            });
-
-            this.input.on('pointerup', (pointer) => {
-                if (pointer.x < width / 2) {
-                    this.joyThumb.x = this.joyBase.x;
-                    this.joyThumb.y = this.joyBase.y;
-                    this.joyKeys = { left: { isDown: false }, right: { isDown: false }, up: { isDown: false }, down: { isDown: false } };
-                }
-            });
-        }
         // 2. Mobile Joystick (if no auto-aim target)
         if (!angleSet && this.isMobile) {
-            const vx = this.player.body.velocity.x, vy = this.player.body.velocity.y;
+            const vx = this.player.body.velocity.x;
+            const vy = this.player.body.velocity.y;
             if (Math.abs(vx) > 10 || Math.abs(vy) > 10) {
                 angle = Math.atan2(vy, vx);
                 angleSet = true;
@@ -829,17 +757,50 @@ class GameScene extends Phaser.Scene {
         if (this.weaponSprite) {
             this.weaponSprite.setPosition(this.player.x, this.player.y);
             this.weaponSprite.setRotation(angle);
-            // Offset weapon nicely to the side/front
             const offset = 20;
             this.weaponSprite.x += Math.cos(angle) * offset;
             this.weaponSprite.y += Math.sin(angle) * offset;
-
-            // Flip Y if facing left so gun isn't upside down
             this.weaponSprite.setFlipY(Math.abs(angle) > 1.57);
         }
     }
 
-    handleDash(time) { }
+    handleDash(time) {
+        if (this.isDashing) {
+            if (time > this.dashEndTime) {
+                this.isDashing = false;
+                this.player.body.maxSpeed = this.playerSpeed; // Reset speed
+                this.player.body.setVelocity(0, 0);
+            }
+        }
+    }
+
+    performDash() {
+        if (this.isDashing || this.time.now < this.dashCooldownTimer) return;
+        this.isDashing = true;
+        this.dashCooldownTimer = this.time.now + this.dashCooldown;
+        this.dashEndTime = this.time.now + this.dashDuration;
+
+        let angle = this.player.rotation;
+        // Direction from inputs if pressed
+        if (this.cursors.left.isDown || this.cursors.right.isDown || this.cursors.up.isDown || this.cursors.down.isDown) {
+            const dx = (this.cursors.right.isDown ? 1 : 0) - (this.cursors.left.isDown ? 1 : 0);
+            const dy = (this.cursors.down.isDown ? 1 : 0) - (this.cursors.up.isDown ? 1 : 0);
+            if (dx !== 0 || dy !== 0) angle = Math.atan2(dy, dx);
+        } else if (this.isMobile && this.joystickData && this.joystickData.active) {
+            angle = Math.atan2(this.joystickData.dy, this.joystickData.dx);
+        }
+
+        this.physics.velocityFromRotation(angle, this.dashSpeed, this.player.body.velocity);
+        this.playSound('dash');
+
+        // Visual dash trail
+        this.time.addEvent({
+            delay: 40, repeat: 4, callback: () => {
+                const trail = this.add.image(this.player.x, this.player.y, 'player').setAlpha(0.6).setTint(0x00ffff).setScale(this.player.scaleX);
+                this.tweens.add({ targets: trail, alpha: 0, duration: 250, onComplete: () => trail.destroy() });
+            }
+        });
+    }
 
     // ==================== SHOOTING ====================
     getNearestEnemy() {
@@ -862,7 +823,7 @@ class GameScene extends Phaser.Scene {
 
         // Auto-aim / Auto-fire logic
         const { enemy, dist } = this.getNearestEnemy();
-        const autoRange = 400; // Auto-fire range
+        const autoRange = 550; // Increased Auto-fire range
         let autoAngle = null;
         let shouldShoot = false;
 
@@ -969,6 +930,28 @@ class GameScene extends Phaser.Scene {
         if (weapon.ammo === 0 && weapon.ammo !== Infinity) {
             this.switchWeapon(0);
             this.showDamageNumber(this.player.x, this.player.y - 40, 'NO AMMO!', '#ff0000');
+        }
+    }
+
+    fireBullet(angle, weapon) {
+        // Create bullet at player position + offset
+        const offset = 20;
+        const x = this.player.x + Math.cos(angle) * offset;
+        const y = this.player.y + Math.sin(angle) * offset;
+
+        const bullet = this.bullets.get(x, y, weapon.bulletTexture);
+        if (bullet) {
+            bullet.setActive(true).setVisible(true);
+            bullet.setRotation(angle);
+            this.physics.velocityFromRotation(angle, weapon.bulletSpeed, bullet.body.velocity);
+            bullet.damage = weapon.bulletDamage;
+            bullet.knockback = weapon.weaponKnockback || 0;
+            bullet.pierce = weapon.pierce || 0;
+            bullet.born = this.time.now;
+            bullet.lifespan = weapon.bulletLifetime;
+
+            // Stats
+            // weapon.shotsFired++; 
         }
     }
 
@@ -1967,6 +1950,7 @@ class GameScene extends Phaser.Scene {
                 case 'hit': osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.08); gain.gain.setValueAtTime(0.06, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08); osc.start(now); osc.stop(now + 0.08); break;
                 case 'kill': osc.type = 'square'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(40, now + 0.2); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2); osc.start(now); osc.stop(now + 0.2); break;
                 case 'hurt': osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(80, now + 0.3); gain.gain.setValueAtTime(0.12, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3); osc.start(now); osc.stop(now + 0.3); break;
+                case 'explosion': osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); osc.frequency.exponentialRampToValueAtTime(10, now + 0.5); gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5); osc.start(now); osc.stop(now + 0.5); break;
                 case 'xp': osc.type = 'sine'; osc.frequency.setValueAtTime(600, now); osc.frequency.exponentialRampToValueAtTime(900, now + 0.08); gain.gain.setValueAtTime(0.06, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08); osc.start(now); osc.stop(now + 0.08); break;
                 case 'coin': osc.type = 'sine'; osc.frequency.setValueAtTime(800, now); osc.frequency.setValueAtTime(1200, now + 0.05); gain.gain.setValueAtTime(0.08, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15); osc.start(now); osc.stop(now + 0.15); break;
                 case 'levelup': osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.setValueAtTime(600, now + 0.1); osc.frequency.setValueAtTime(800, now + 0.2); osc.frequency.setValueAtTime(1200, now + 0.3); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5); osc.start(now); osc.stop(now + 0.5); break;
@@ -2438,6 +2422,134 @@ class GameScene extends Phaser.Scene {
             }
         });
         return nearest;
+    }
+
+    // ==================== MISSING METHODS ====================
+    takeDamage(amount) {
+        if (this.gameOver) return;
+        const time = this.time.now;
+        if (time < this.lastDamageTime + 200) return;
+        this.lastDamageTime = time;
+
+        const actualDamage = Math.floor(amount * (this.armorMultiplier || 1));
+        this.playerHP = Math.max(0, this.playerHP - actualDamage);
+
+        this.cameras.main.shake(100, 0.01);
+        this.player.setTint(0xff0000);
+        this.time.delayedCall(150, () => { if (this.player.active) this.player.clearTint(); });
+        this.playSound('hurt');
+
+        if (this.playerHP <= 0) {
+            this.triggerGameOver();
+        }
+    }
+
+    explode(x, y, radius, damage) {
+        this.playSound('explosion'); // Use synthesized sound
+        this.cameras.main.shake(150, 0.02);
+
+        // Explosion visual
+        if (this.hitParticles) {
+            this.hitParticles.emitParticleAt(x, y, 20);
+        }
+        // Visual Circle
+        const exp = this.add.circle(x, y, radius, 0xff4400, 0.6);
+        this.tweens.add({ targets: exp, scale: 1.5, alpha: 0, duration: 300, onComplete: () => exp.destroy() });
+
+        // Damage enemies
+        this.zombies.getChildren().forEach(z => {
+            if (!z.active) return;
+            const dist = Phaser.Math.Distance.Between(x, y, z.x, z.y);
+            if (dist <= radius) {
+                z.hp -= damage;
+                z.setTint(0xffaa00);
+                this.showDamageNumber(z.x, z.y - 40, damage, '#ffaa00');
+                if (z.hp <= 0) {
+                    this.events.emit('enemyKilled');
+                    z.destroy();
+                } else {
+                    this.time.delayedCall(100, () => { if (z.active) z.clearTint(); });
+                }
+            }
+        });
+
+        // Damage player
+        const pDist = Phaser.Math.Distance.Between(x, y, this.player.x, this.player.y);
+        if (pDist <= radius * 0.8) {
+            this.takeDamage(Math.floor(damage * 0.5));
+        }
+    }
+
+    triggerGameOver() {
+        if (this.gameOver) return;
+        this.gameOver = true;
+        this.physics.pause();
+        this.player.setTint(0xff0000);
+
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.7).setScrollFactor(0).setDepth(1000);
+        this.add.text(width / 2, height / 2 - 50, 'GAME OVER', {
+            fontFamily: 'monospace', fontSize: '64px', color: '#ff0000', fontStyle: 'bold'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(1001);
+
+        const restartBtn = this.add.text(width / 2, height / 2 + 50, 'Click to Restart', {
+            fontFamily: 'monospace', fontSize: '24px', color: '#ffffff'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(1001).setInteractive({ useHandCursor: true });
+
+        restartBtn.on('pointerdown', () => {
+            this.scene.start('StartScene');
+        });
+    }
+
+    showDamageNumber(x, y, text, color) {
+        const txt = this.add.text(x, y, text, {
+            fontFamily: 'monospace', fontSize: '18px', color: color, fontStyle: 'bold',
+            stroke: '#000000', strokeThickness: 3
+        }).setOrigin(0.5).setDepth(20);
+
+        this.tweens.add({
+            targets: txt,
+            y: y - 40,
+            alpha: 0,
+            duration: 800,
+            onComplete: () => txt.destroy()
+        });
+    }
+
+    playSound(key) {
+        if (this.soundEnabled && this.sound.get(key)) {
+            this.sound.play(key);
+        }
+    }
+
+    playSoundPitched(key, rate) {
+        if (this.soundEnabled && this.sound.get(key)) {
+            this.sound.play(key, { rate: rate });
+        }
+    }
+
+    spawnPowerDrop(x, y) {
+        const type = Phaser.Utils.Array.GetRandom(this.powerTypes);
+        const drop = this.powerDrops.get(x, y, type.texture);
+        if (drop) {
+            drop.setActive(true).setVisible(true).setDepth(5);
+            drop.body.enable = true;
+            drop.powerType = type;
+            drop.spawnTime = this.time.now;
+            this.tweens.add({ targets: drop, y: y - 5, duration: 1000, yoyo: true, repeat: -1 });
+        }
+    }
+
+    spawnAmmoDrop(x, y) {
+        const drop = this.ammoDrops.get(x, y, 'ammo_box');
+        if (drop) {
+            drop.setActive(true).setVisible(true).setDepth(5);
+            drop.body.enable = true;
+            drop.spawnTime = this.time.now;
+            this.tweens.add({ targets: drop, y: y - 5, duration: 1000, yoyo: true, repeat: -1 });
+        }
     }
 }
 
