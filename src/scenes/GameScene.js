@@ -13,6 +13,10 @@ class GameScene extends Phaser.Scene {
         this.totalCoinsEarned = 0;
         this.stageClearActive = false;
 
+        // Zombie latch-on mechanic
+        this.attachedZombies = [];
+
+
         // Game state
         this.score = 0;
         this.wave = this.currentLevel.level || 1;
@@ -79,10 +83,46 @@ class GameScene extends Phaser.Scene {
             { id: 'heal', name: 'Full Heal', icon: '💚', apply: () => { this.playerHP = this.playerMaxHP; } },
             { id: 'dash_cd', name: 'Dash CD -20%', icon: '💨', apply: () => { this.dashCooldown = Math.max(500, this.dashCooldown * 0.8); } },
             { id: 'bullet_life', name: 'Range +25%', icon: '🎯', apply: () => { Object.values(this.weapons).forEach(w => w.bulletLifetime *= 1.25); } },
-            { id: 'unlock_shotgun', name: 'Unlock Shotgun', icon: '🔫', apply: () => { if (!this.unlockedWeapons.includes('shotgun')) this.unlockedWeapons.push('shotgun'); this.weapons.shotgun.ammo = this.weapons.shotgun.maxAmmo; }, once: true },
-            { id: 'unlock_smg', name: 'Unlock SMG', icon: '🔫', apply: () => { if (!this.unlockedWeapons.includes('smg')) this.unlockedWeapons.push('smg'); this.weapons.smg.ammo = this.weapons.smg.maxAmmo; }, once: true },
-            { id: 'unlock_assault', name: 'Unlock Assault Rifle', icon: '🔫', apply: () => { if (!this.unlockedWeapons.includes('assault')) this.unlockedWeapons.push('assault'); this.weapons.assault.ammo = this.weapons.assault.maxAmmo; }, once: true },
-            { id: 'unlock_flamethrower', name: 'Unlock Flamethrower', icon: '🔫', apply: () => { if (!this.unlockedWeapons.includes('flamethrower')) this.unlockedWeapons.push('flamethrower'); this.weapons.flamethrower.ammo = this.weapons.flamethrower.maxAmmo; }, once: true },
+            {
+                id: 'unlock_shotgun', name: 'Unlock Shotgun', icon: '🔫', apply: () => {
+                    if (!this.unlockedWeapons.includes('shotgun')) {
+                        this.unlockedWeapons.push('shotgun');
+                        this.currentWeaponKey = 'shotgun';
+                        this.events.emit('weaponSwitch', 'shotgun');
+                    }
+                    this.weapons.shotgun.ammo = this.weapons.shotgun.maxAmmo;
+                }, once: true
+            },
+            {
+                id: 'unlock_smg', name: 'Unlock SMG', icon: '🔫', apply: () => {
+                    if (!this.unlockedWeapons.includes('smg')) {
+                        this.unlockedWeapons.push('smg');
+                        this.currentWeaponKey = 'smg';
+                        this.events.emit('weaponSwitch', 'smg');
+                    }
+                    this.weapons.smg.ammo = this.weapons.smg.maxAmmo;
+                }, once: true
+            },
+            {
+                id: 'unlock_assault', name: 'Unlock Assault Rifle', icon: '🔫', apply: () => {
+                    if (!this.unlockedWeapons.includes('assault')) {
+                        this.unlockedWeapons.push('assault');
+                        this.currentWeaponKey = 'assault';
+                        this.events.emit('weaponSwitch', 'assault');
+                    }
+                    this.weapons.assault.ammo = this.weapons.assault.maxAmmo;
+                }, once: true
+            },
+            {
+                id: 'unlock_flamethrower', name: 'Unlock Flamethrower', icon: '🔫', apply: () => {
+                    if (!this.unlockedWeapons.includes('flamethrower')) {
+                        this.unlockedWeapons.push('flamethrower');
+                        this.currentWeaponKey = 'flamethrower';
+                        this.events.emit('weaponSwitch', 'flamethrower');
+                    }
+                    this.weapons.flamethrower.ammo = this.weapons.flamethrower.maxAmmo;
+                }, once: true
+            },
             { id: 'ammo_up', name: 'Refill All Ammo', icon: '📦', apply: () => { Object.values(this.weapons).forEach(w => w.ammo = w.maxAmmo); } },
             { id: 'max_ammo_up', name: 'Max Ammo +30%', icon: '🎒', apply: () => { Object.values(this.weapons).forEach(w => { if (w.maxAmmo !== Infinity) { w.maxAmmo = Math.floor(w.maxAmmo * 1.3); w.ammo = w.maxAmmo; } }); } },
         ];
@@ -157,8 +197,8 @@ class GameScene extends Phaser.Scene {
     }
 
     create() {
-        const worldWidth = 2000;
-        const worldHeight = 2000;
+        const worldWidth = 8000;
+        const worldHeight = 600;
         this.worldWidth = worldWidth;
         this.worldHeight = worldHeight;
         this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
@@ -172,7 +212,7 @@ class GameScene extends Phaser.Scene {
         this.createEnvironment(worldWidth, worldHeight);
 
         // Create player
-        this.createPlayer(worldWidth / 2, worldHeight / 2);
+        this.createPlayer(100, worldHeight / 2);
 
         // Groups
         this.bullets = this.physics.add.group({ classType: Phaser.Physics.Arcade.Sprite, maxSize: 100, runChildUpdate: false });
@@ -255,7 +295,7 @@ class GameScene extends Phaser.Scene {
         // ===== CAMERA =====
         this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
         this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
-        this.cameras.main.setZoom(1);
+        this.cameras.main.setZoom(1.3);
         this.cameras.main.setBackgroundColor('#0d0d1a');
 
         // ===== ATMOSPHERIC OVERLAYS =====
@@ -320,7 +360,7 @@ class GameScene extends Phaser.Scene {
 
         // Overlay with varied ground patches for visual interest
         const groundVariants = ['ground_dark', 'ground_cracked'];
-        for (let i = 0; i < 60; i++) {
+        for (let i = 0; i < 240; i++) {
             const vx = Phaser.Math.Between(32, worldWidth - 32);
             const vy = Phaser.Math.Between(32, worldHeight - 32);
             const variant = Phaser.Utils.Array.GetRandom(groundVariants);
@@ -331,7 +371,7 @@ class GameScene extends Phaser.Scene {
         }
 
         // Grass patches scattered around
-        for (let i = 0; i < 80; i++) {
+        for (let i = 0; i < 300; i++) {
             const gx = Phaser.Math.Between(20, worldWidth - 20);
             const gy = Phaser.Math.Between(20, worldHeight - 20);
             this.add.image(gx, gy, 'grass_patch')
@@ -341,7 +381,7 @@ class GameScene extends Phaser.Scene {
         }
 
         // Puddles
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 80; i++) {
             const px = Phaser.Math.Between(60, worldWidth - 60);
             const py = Phaser.Math.Between(60, worldHeight - 60);
             this.add.image(px, py, 'puddle')
@@ -352,14 +392,14 @@ class GameScene extends Phaser.Scene {
 
         // Environmental props — scattered around the world
         // Barrels
-        for (let i = 0; i < 25; i++) {
+        for (let i = 0; i < 100; i++) {
             const bx = Phaser.Math.Between(50, worldWidth - 50);
             const by = Phaser.Math.Between(50, worldHeight - 50);
             this.add.image(bx, by, 'barrel').setDepth(4).setScale(0.9 + Math.random() * 0.3);
         }
 
         // Crates
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < 120; i++) {
             const cx = Phaser.Math.Between(50, worldWidth - 50);
             const cy = Phaser.Math.Between(50, worldHeight - 50);
             this.add.image(cx, cy, 'crate').setDepth(4)
@@ -368,7 +408,7 @@ class GameScene extends Phaser.Scene {
         }
 
         // Rocks
-        for (let i = 0; i < 40; i++) {
+        for (let i = 0; i < 160; i++) {
             const rx = Phaser.Math.Between(30, worldWidth - 30);
             const ry = Phaser.Math.Between(30, worldHeight - 30);
             this.add.image(rx, ry, 'rock').setDepth(3)
@@ -378,7 +418,7 @@ class GameScene extends Phaser.Scene {
         }
 
         // Dead trees
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < 60; i++) {
             const tx = Phaser.Math.Between(80, worldWidth - 80);
             const ty = Phaser.Math.Between(80, worldHeight - 80);
             this.add.image(tx, ty, 'dead_tree').setDepth(4)
@@ -387,7 +427,7 @@ class GameScene extends Phaser.Scene {
         }
 
         // Fence segments
-        for (let i = 0; i < 12; i++) {
+        for (let i = 0; i < 50; i++) {
             const fx = Phaser.Math.Between(100, worldWidth - 100);
             const fy = Phaser.Math.Between(100, worldHeight - 100);
             const fenceAngle = Phaser.Math.Between(0, 1) * 90;
@@ -400,7 +440,7 @@ class GameScene extends Phaser.Scene {
         }
 
         // Lampposts with actual light glow
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 40; i++) {
             const lx = Phaser.Math.Between(100, worldWidth - 100);
             const ly = Phaser.Math.Between(100, worldHeight - 100);
             // Light glow on ground
@@ -479,6 +519,7 @@ class GameScene extends Phaser.Scene {
         this.handleContinuousShooting(time);
         this.handleDash(time);
         this.updateZombies();
+        this.updateAttachedZombies(time, delta);
         this.cleanupBullets();
         this.cleanupOrbs();
         this.updateVisuals(time, delta);
@@ -768,6 +809,15 @@ class GameScene extends Phaser.Scene {
         }
         x = Phaser.Math.Clamp(x, 20, this.worldWidth - 20); y = Phaser.Math.Clamp(y, 20, this.worldHeight - 20);
 
+        // Linear Level Logic: Bias towards spawning ahead
+        if (this.player.x < this.worldWidth - 1000) {
+            if (Math.random() < 0.7) {
+                // Spawn ahead
+                x = this.cameras.main.scrollX + this.cameras.main.width + margin;
+                y = Phaser.Math.Between(20, this.worldHeight - 20);
+            }
+        }
+
         // Use enemy pool from level data
         const pool = this.enemyPool || ['normal'];
         const zombieType = Phaser.Utils.Array.GetRandom(pool);
@@ -907,6 +957,12 @@ class GameScene extends Phaser.Scene {
             this.tweens.add({ targets: xpOrb, y: xpOrb.y - 10, duration: 400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
         }
 
+        // Handle attached zombie death
+        const attachedIndex = this.attachedZombies.indexOf(zombie);
+        if (attachedIndex > -1) {
+            this.attachedZombies.splice(attachedIndex, 1);
+        }
+
         // Coin drop
         if (Math.random() < 0.3) {
             const coin = this.coins.get(zombie.x + Phaser.Math.Between(-10, 10), zombie.y + Phaser.Math.Between(-10, 10), 'coin');
@@ -948,6 +1004,19 @@ class GameScene extends Phaser.Scene {
 
     zombieHitPlayer(player, zombie) {
         if (this.gameOver || this.isDashing) return;
+
+        // Attack/Attach Mechanic
+        // 40% chance to attach if not already attached and not dash-immune
+        if (!zombie.isAttached && Math.random() < 0.4 && this.attachedZombies.length < 3) {
+            zombie.isAttached = true;
+            zombie.body.enable = false; // Disable physics so they don't push
+            this.attachedZombies.push(zombie);
+            this.showDamageNumber(player.x, player.y - 40, 'GRABBED!', '#ff0000');
+            this.playSound('hurt');
+            return; // Don't deal initial impact damage if grabbing
+        }
+
+        // Normal damage if not attached (or if max attached)
         const time = this.time.now;
         if (time < this.lastDamageTime + this.damageCooldown) return;
         this.lastDamageTime = time;
@@ -1680,6 +1749,21 @@ class GameScene extends Phaser.Scene {
         if (!this.canDash || this.isDashing || this.gameOver) return;
         const time = this.time.now;
         this.isDashing = true; this.canDash = false;
+
+        // Shake off attached zombies
+        if (this.attachedZombies.length > 0) {
+            this.attachedZombies.forEach(z => {
+                if (z.active) {
+                    z.isAttached = false;
+                    z.body.enable = true;
+                    // Fling them away
+                    const flingAngle = Phaser.Math.Between(0, 360);
+                    this.physics.velocityFromRotation(flingAngle, 500, z.body.velocity);
+                    this.showDamageNumber(z.x, z.y, 'SHAKE OFF!', '#ffffff');
+                }
+            });
+            this.attachedZombies = [];
+        }
         this.dashEndTime = time + this.dashDuration; this.dashCooldownTimer = time + this.dashCooldown;
         let vx = this.player.body.velocity.x, vy = this.player.body.velocity.y;
         const len = Math.sqrt(vx * vx + vy * vy);
@@ -1751,6 +1835,42 @@ class GameScene extends Phaser.Scene {
         this.playSound('levelup');
         this.events.emit('levelUp', this.playerLevel);
         this.showUpgradeMenu();
+    }
+
+    updateAttachedZombies(time, delta) {
+        if (this.attachedZombies.length === 0) return;
+
+        // Damage timer for attached zombies
+        if (!this.nextAttachDamage) this.nextAttachDamage = 0;
+
+        for (let i = this.attachedZombies.length - 1; i >= 0; i--) {
+            const z = this.attachedZombies[i];
+            if (!z.active) {
+                this.attachedZombies.splice(i, 1);
+                continue;
+            }
+
+            // Stick to player with slight random jitter
+            z.x = this.player.x + Phaser.Math.Between(-20, 20);
+            z.y = this.player.y + Phaser.Math.Between(-20, 20);
+        }
+
+        if (time > this.nextAttachDamage) {
+            if (this.attachedZombies.length > 0) {
+                const dmgPerZombie = 2; // Low continuous damage
+                const totalDmg = this.attachedZombies.length * dmgPerZombie;
+                this.playerHP = Math.max(0, this.playerHP - totalDmg);
+                this.cameras.main.shake(50, 0.005);
+                this.player.setTint(0xff5555);
+                this.time.delayedCall(100, () => this.player.clearTint());
+
+                // Show damage msg
+                if (Math.random() < 0.3) this.showDamageNumber(this.player.x, this.player.y - 30, `-${totalDmg}`, '#ff0000');
+
+                if (this.playerHP <= 0) this.triggerGameOver();
+            }
+            this.nextAttachDamage = time + 500; // Tick every 0.5s
+        }
     }
 }
 
