@@ -49,13 +49,16 @@ class StartScene extends Phaser.Scene {
         }
 
         // ===== Title =====
-        const titleGlow = this.add.text(width / 2, height / 2 - 120, 'ZOMBIE KILLER\nARENA', {
-            fontFamily: 'monospace', fontSize: '50px', color: '#e94560', fontStyle: 'bold',
+        const titleSize = width < 500 ? '36px' : '50px';
+        const titleY = height / 2 - (width < 500 ? 100 : 120);
+
+        const titleGlow = this.add.text(width / 2, titleY, 'ZOMBIE KILLER\nARENA', {
+            fontFamily: 'monospace', fontSize: titleSize, color: '#e94560', fontStyle: 'bold',
             align: 'center', lineSpacing: 10, stroke: '#e94560', strokeThickness: 12
         }).setOrigin(0.5).setAlpha(0.15);
 
-        const title = this.add.text(width / 2, height / 2 - 120, 'ZOMBIE KILLER\nARENA', {
-            fontFamily: 'monospace', fontSize: '50px', color: '#e94560', fontStyle: 'bold',
+        const title = this.add.text(width / 2, titleY, 'ZOMBIE KILLER\nARENA', {
+            fontFamily: 'monospace', fontSize: titleSize, color: '#e94560', fontStyle: 'bold',
             align: 'center', lineSpacing: 10, stroke: '#000000', strokeThickness: 6
         }).setOrigin(0.5);
 

@@ -24,51 +24,68 @@ class LevelSelectScene extends Phaser.Scene {
             fontFamily: 'monospace', fontSize: '14px', color: '#ffdd57', fontStyle: 'bold'
         }).setOrigin(1, 0.5);
 
-        // Level definitions — 6 stages × 5 levels each = 30 levels
+        // Level definitions
         this.levelData = this.getLevelData();
 
         // Stage themed names & colors
         const stageNames = ['ABANDONED STREETS', 'DARK SEWERS', 'THE OUTSKIRTS', 'RUINED FACTORY', 'GRAVEYARD', 'INFERNO'];
         const stageColors = ['#88aacc', '#77aa99', '#ccaa77', '#aa8877', '#77cc88', '#ff6644'];
 
-        // Scrollable area — use a camera offset
+        // Scrollable area setup
         this.scrollY = 0;
-        const maxScroll = Math.max(0, 6 * 95 + 60 - (height - 100));
-
-        // Create level grid
-        const startY = 55;
-        const stageHeight = 95;
-
         this.cardContainer = this.add.container(0, 0);
 
-        for (let stage = 0; stage < 6; stage++) {
-            const sy = startY + stage * stageHeight;
+        // Grid calculations
+        const cardW = 130;
+        const cardH = 42;
+        const gapX = 15;
+        const gapY = 15;
+        const itemW = cardW + gapX;
 
+        // Determine columns
+        const availableW = width - 40;
+        const maxCols = 5;
+        const cols = Math.max(1, Math.min(maxCols, Math.floor(availableW / itemW)));
+        const gridW = cols * itemW - gapX;
+        const startX = (width - gridW) / 2 + cardW / 2;
+
+        let currentY = 55;
+
+        for (let stage = 0; stage < 6; stage++) {
             // Stage label
-            this.cardContainer.add(this.add.text(25, sy, `STAGE ${stage + 1}: ${stageNames[stage]}`, {
+            this.cardContainer.add(this.add.text(25, currentY, `STAGE ${stage + 1}: ${stageNames[stage]}`, {
                 fontFamily: 'monospace', fontSize: '11px', color: stageColors[stage], fontStyle: 'bold'
             }));
 
             // Divider
-            this.cardContainer.add(this.add.rectangle(width / 2, sy + 16, width - 30, 1, 0x333355, 0.3));
+            this.cardContainer.add(this.add.rectangle(width / 2, currentY + 16, width - 30, 1, 0x333355, 0.3));
+
+            // Cards
+            const cardStartY = currentY + 48;
+            let rowsUsed = 0;
 
             for (let lvl = 0; lvl < 5; lvl++) {
                 const levelNum = stage * 5 + lvl + 1;
-                // Center the grid: (width - approx 725) / 2 + card_center_offset
-                const x = (width - 725) / 2 + lvl * 145 + 72;
-                const y = sy + 48;
+
+                const colIdx = lvl % cols;
+                const rowIdx = Math.floor(lvl / cols);
+                rowsUsed = Math.max(rowsUsed, rowIdx + 1);
+
+                const x = startX + colIdx * itemW;
+                const y = cardStartY + rowIdx * (cardH + gapY);
+
                 const isUnlocked = levelNum <= highestLevel;
                 const isBoss = lvl === 4;
                 const isCompleted = levelNum < highestLevel;
 
                 // Card bg
                 const bgColor = isBoss ? 0x441122 : 0x222244;
-                const card = this.add.rectangle(x, y, 130, 42, bgColor, isUnlocked ? 0.9 : 0.3)
+                const card = this.add.rectangle(x, y, cardW, cardH, bgColor, isUnlocked ? 0.9 : 0.3)
                     .setInteractive(isUnlocked ? { useHandCursor: true } : {});
                 this.cardContainer.add(card);
 
                 const borderColor = isCompleted ? 0x00ff88 : (isUnlocked ? (isBoss ? 0xe94560 : 0x00d4ff) : 0x333355);
-                const border = this.add.rectangle(x, y, 130, 42).setStrokeStyle(2, borderColor, 0.6);
+                const border = this.add.rectangle(x, y, cardW, cardH).setStrokeStyle(2, borderColor, 0.6);
                 this.cardContainer.add(border);
 
                 // Level text
@@ -90,7 +107,7 @@ class LevelSelectScene extends Phaser.Scene {
 
                 // Completed checkmark
                 if (isCompleted) {
-                    this.cardContainer.add(this.add.text(x + 52, y - 16, '✓', {
+                    this.cardContainer.add(this.add.text(x + cardW / 2 - 8, y - cardH / 2 + 8, '✓', {
                         fontFamily: 'monospace', fontSize: '12px', color: '#00ff88', fontStyle: 'bold'
                     }).setOrigin(0.5));
                 }
@@ -100,7 +117,6 @@ class LevelSelectScene extends Phaser.Scene {
                     this.cardContainer.add(this.add.text(x, y, '🔒', { fontSize: '14px' }).setOrigin(0.5).setAlpha(0.4));
                 }
 
-                // Click handler
                 if (isUnlocked) {
                     card.on('pointerover', () => {
                         card.setFillStyle(isBoss ? 0x662244 : 0x334488, 1);
@@ -115,7 +131,14 @@ class LevelSelectScene extends Phaser.Scene {
                     });
                 }
             }
+
+            // Advance Y for next stage
+            const stageContentH = 48 + rowsUsed * (cardH + gapY);
+            currentY += stageContentH + 10;
         }
+
+        const contentHeight = currentY + 60;
+        const maxScroll = Math.max(0, contentHeight - (height - 60));
 
         // Scroll handling via mouse wheel
         this.input.on('wheel', (pointer, gos, dx, dy) => {

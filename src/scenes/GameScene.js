@@ -63,7 +63,7 @@ class GameScene extends Phaser.Scene {
 
         // Weapons system (with meta damage)
         this.weapons = {
-            pistol: { name: 'Pistol', fireRate: 250, bulletSpeed: 500, bulletDamage: Math.floor(25 * metaDmg), bulletLifetime: 1000, bulletTexture: 'bullet', spread: 0, pellets: 1, auto: false, ammo: Infinity, maxAmmo: Infinity },
+            pistol: { name: 'Pistol', fireRate: 400, bulletSpeed: 500, bulletDamage: Math.floor(25 * metaDmg), bulletLifetime: 1000, bulletTexture: 'bullet', spread: 0, pellets: 1, auto: false, ammo: Infinity, maxAmmo: Infinity },
             shotgun: { name: 'Shotgun', fireRate: 600, bulletSpeed: 450, bulletDamage: Math.floor(15 * metaDmg), bulletLifetime: 600, bulletTexture: 'bullet_shotgun', spread: 0.3, pellets: 5, auto: false, ammo: 30, maxAmmo: 30 },
             smg: { name: 'SMG', fireRate: 80, bulletSpeed: 550, bulletDamage: Math.floor(10 * metaDmg), bulletLifetime: 800, bulletTexture: 'bullet_smg', spread: 0.15, pellets: 1, auto: true, ammo: 120, maxAmmo: 120 },
             assault: { name: 'Assault Rifle', fireRate: 120, bulletSpeed: 600, bulletDamage: Math.floor(20 * metaDmg), bulletLifetime: 1200, bulletTexture: 'bullet_ar', spread: 0.08, pellets: 1, auto: true, ammo: 60, maxAmmo: 60 },

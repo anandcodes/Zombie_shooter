@@ -258,9 +258,19 @@ class UIScene extends Phaser.Scene {
             fontFamily: 'monospace', fontSize: '14px', color: '#ffffff', align: 'center', lineSpacing: 6
         }).setOrigin(0.5).setAlpha(0);
 
-        const nextBtn = this.add.text(width / 2, height / 2 + 80, 'NEXT LEVEL >>', {
+        const nextBtn = this.add.text(width / 2, height / 2 + 130, 'NEXT LEVEL >>', {
             fontFamily: 'monospace', fontSize: '18px', color: '#00ff88',
             backgroundColor: '#004422', padding: { x: 10, y: 5 }, fontStyle: 'bold'
+        }).setOrigin(0.5).setAlpha(0).setInteractive({ useHandCursor: true });
+
+        const menuBtn = this.add.text(width / 2 - 120, height / 2 + 130, '🏠 HOME', {
+            fontFamily: 'monospace', fontSize: '14px', color: '#ffffff',
+            backgroundColor: '#222244', padding: { x: 8, y: 4 }
+        }).setOrigin(0.5).setAlpha(0).setInteractive({ useHandCursor: true });
+
+        const upgradeBtn = this.add.text(width / 2 + 120, height / 2 + 130, '🛒 UPGRADES', {
+            fontFamily: 'monospace', fontSize: '14px', color: '#ffaa33',
+            backgroundColor: '#332200', padding: { x: 8, y: 4 }
         }).setOrigin(0.5).setAlpha(0).setInteractive({ useHandCursor: true });
 
         nextBtn.on('pointerdown', () => {
@@ -275,17 +285,29 @@ class UIScene extends Phaser.Scene {
             });
         });
 
+        menuBtn.on('pointerdown', () => {
+            this.scene.stop('GameScene'); this.scene.stop('UIScene'); this.scene.start('StartScene');
+        });
+
+        upgradeBtn.on('pointerdown', () => {
+            this.scene.stop('GameScene'); this.scene.stop('UIScene'); this.scene.start('UpgradeShopScene');
+        });
+
         nextBtn.on('pointerover', () => nextBtn.setBackgroundColor('#006633'));
         nextBtn.on('pointerout', () => nextBtn.setBackgroundColor('#004422'));
+        menuBtn.on('pointerover', () => menuBtn.setBackgroundColor('#333355'));
+        menuBtn.on('pointerout', () => menuBtn.setBackgroundColor('#222244'));
+        upgradeBtn.on('pointerover', () => upgradeBtn.setBackgroundColor('#443300'));
+        upgradeBtn.on('pointerout', () => upgradeBtn.setBackgroundColor('#332200'));
 
-        this.stageClearContainer.add([bg, title, stats, nextBtn]);
+        this.stageClearContainer.add([bg, title, stats, nextBtn, menuBtn, upgradeBtn]);
 
         this.tweens.add({
             targets: title, alpha: 1, scaleX: 1.1, scaleY: 1.1, duration: 400, ease: 'Back.easeOut',
             onComplete: () => { this.tweens.add({ targets: title, scaleX: 1, scaleY: 1, duration: 200 }); }
         });
         this.tweens.add({ targets: stats, alpha: 1, duration: 400, delay: 500 });
-        this.tweens.add({ targets: nextBtn, alpha: 1, duration: 400, delay: 1000 });
+        this.tweens.add({ targets: [nextBtn, menuBtn, upgradeBtn], alpha: 1, duration: 400, delay: 1000 });
 
         // Removed auto-hide timer to wait for user input
     }
