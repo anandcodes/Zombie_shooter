@@ -828,6 +828,40 @@ class BootScene extends Phaser.Scene {
                 break;
         }
         g.destroy();
+
+        // Phase 5: Shield Bearer - Shield Texture
+        const bs = this.make.graphics({ add: false });
+        bs.fillStyle(0xcccccc, 1);
+        bs.fillRoundedRect(0, 0, 16, 40, 4); // Tall shield
+        bs.fillStyle(0x888888, 1);
+        bs.fillRect(6, 4, 4, 32); // Stripe
+        bs.generateTexture('enemy_shield', 16, 40);
+        bs.destroy();
+
+        // Phase 5: Explosive Barrel
+        const bb = this.make.graphics({ add: false });
+        bb.fillStyle(0xff4400, 1);
+        bb.fillRoundedRect(0, 0, 32, 40, 6);
+        bb.fillStyle(0x222222, 1);
+        bb.fillRect(0, 8, 32, 4); // Rings
+        bb.fillRect(0, 28, 32, 4);
+        // Warning Icon
+        bb.fillStyle(0xffff00, 1);
+        bb.fillTriangle(16, 12, 10, 24, 22, 24);
+        bb.generateTexture('barrel_explosive', 32, 40);
+        bb.destroy();
+
+        // Phase 5: Mini-map icons
+        const mm = this.make.graphics({ add: false });
+        mm.fillStyle(0xff0000, 1); mm.fillCircle(4, 4, 4);
+        mm.generateTexture('mm_enemy', 8, 8);
+
+        mm.clear(); mm.fillStyle(0xffff00, 1); mm.fillStar(5, 5, 4, 2, 5);
+        mm.generateTexture('mm_objective', 10, 10);
+
+        mm.clear(); mm.fillStyle(0x00ff00, 1); mm.fillRect(3, 0, 2, 8); mm.fillRect(0, 3, 8, 2);
+        mm.generateTexture('mm_health', 8, 8);
+        mm.destroy();
     }
 
     // ============ Helper: Ground tile with detail ============
@@ -909,6 +943,12 @@ class BootScene extends Phaser.Scene {
         g.fillStyle(0xffffff, 0.3);
         g.fillCircle(half - 2, half - 2, 3);
         g.generateTexture(key, size, size);
+        // Phase 5: Weapon Mod Power-up Textures
+        this._makePowerDrop('power_ricochet', 0xdddddd, 0xaaaaaa, ''); // Grey/Silver
+        this._makePowerDrop('power_vampiric', 0xaa0033, 0xff0000, ''); // Dark Red
+        this._makePowerDrop('power_frostbite', 0x00aaff, 0x00ffff, ''); // Cyan
+        this._makePowerDrop('power_spread', 0xffaa00, 0xffff00, '');    // Orange/Gold
+
         g.destroy();
     }
 

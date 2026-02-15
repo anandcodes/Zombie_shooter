@@ -74,6 +74,35 @@ class UIScene extends Phaser.Scene {
             fontFamily: 'monospace', fontSize: '10px', color: '#00ff88'
         }).setDepth(101);
 
+        // Responsive positioning for HUD
+        if (width < 600) {
+            // Mobile HUD adjustments
+            this.healthBarBg.setPosition(10, 10);
+            this.healthBar.setPosition(12, 12);
+            this.healthLabel.setPosition(12, 50); // Move label below
+            this.healthText.setPosition(110, 20); // Center text
+
+            this.xpBarBg.setPosition(10, 35);
+            this.xpBar.setPosition(12, 37);
+            this.xpLabel.setVisible(false); // Hide label for space
+
+            this.levelText.setPosition(width - 10, 10).setOrigin(1, 0);
+            this.scoreText.setPosition(width - 10, 35).setOrigin(1, 0).setFontSize('14px');
+
+            this.stageText.setFontSize('12px').setPosition(width / 2, 55);
+            this.killBarBg.setVisible(false); // Simplify mobile HUD
+            this.killBar.setVisible(false);
+            this.killText.setVisible(false);
+
+            this.weaponBg.setPosition(width / 2 - 90, height - 40); // Center bottom
+            this.weaponText.setPosition(width / 2 - 80, height - 32);
+            this.ammoText.setPosition(width / 2 + 80, height - 32);
+
+            this.dashBg.setPosition(width - 90, height - 80); // Move to right side
+            this.dashBar.setPosition(width - 88, height - 78);
+            this.dashLabel.setPosition(width - 88, height - 94);
+        }
+
         // ===== Mute indicator =====
         this.muteText = this.add.text(width - 50, height - 20, '🔊', {
             fontSize: '18px'
@@ -441,21 +470,25 @@ class UIScene extends Phaser.Scene {
         this.upgradeContainer.setVisible(true);
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
+        const isMobile = width < 600;
 
         this.upgradeCards.forEach(c => c.destroy());
         this.upgradeCards = [];
 
-        const cardWidth = 180;
-        const cardHeight = 100;
-        const spacing = 20;
-        const totalWidth = choices.length * cardWidth + (choices.length - 1) * spacing;
-        const startX = width / 2 - totalWidth / 2 + cardWidth / 2;
+        // Mobile: Vertical stack, Desktop: Horizontal row
+        const cardWidth = isMobile ? width * 0.8 : 180;
+        const cardHeight = isMobile ? 80 : 100;
+        const spacing = isMobile ? 15 : 20;
+
+        const totalWidth = isMobile ? 0 : choices.length * cardWidth + (choices.length - 1) * spacing;
+        const startX = isMobile ? width / 2 : width / 2 - totalWidth / 2 + cardWidth / 2;
+        const startY = isMobile ? height / 2 - (choices.length * (cardHeight + spacing)) / 2 + cardHeight / 2 : height / 2 + 10;
 
         choices.forEach((upgrade, i) => {
-            const x = startX + i * (cardWidth + spacing);
-            const y = height / 2 + 10;
+            const x = isMobile ? width / 2 : startX + i * (cardWidth + spacing);
+            const y = isMobile ? startY + i * (cardHeight + spacing) : startY;
 
-            const card = this.add.rectangle(x, y, cardWidth, cardHeight, 0x222255, 0.9)
+            const card = this.add.rectangle(x, y, cardWidth, cardHeight, 0x222255, 0.95)
                 .setInteractive({ useHandCursor: true });
             this.upgradeContainer.add(card);
             this.upgradeCards.push(card);
@@ -465,14 +498,20 @@ class UIScene extends Phaser.Scene {
             this.upgradeContainer.add(border);
             this.upgradeCards.push(border);
 
-            const icon = this.add.text(x, y - 25, upgrade.icon, { fontSize: '28px' }).setOrigin(0.5);
+            const iconX = isMobile ? x - cardWidth / 2 + 30 : x;
+            const iconY = isMobile ? y : y - 25;
+            const icon = this.add.text(iconX, iconY, upgrade.icon, { fontSize: isMobile ? '32px' : '28px' }).setOrigin(0.5);
             this.upgradeContainer.add(icon);
             this.upgradeCards.push(icon);
 
-            const nameText = this.add.text(x, y + 15, upgrade.name, {
-                fontFamily: 'monospace', fontSize: '12px', color: '#ffffff', fontStyle: 'bold',
-                align: 'center', wordWrap: { width: cardWidth - 20 }
-            }).setOrigin(0.5);
+            // Text layout
+            const textX = isMobile ? x + 20 : x;
+            const textY = isMobile ? y : y + 15;
+            const nameText = this.add.text(textX, textY, upgrade.name, {
+                fontFamily: 'monospace', fontSize: isMobile ? '14px' : '12px', color: '#ffffff', fontStyle: 'bold',
+                align: isMobile ? 'left' : 'center', wordWrap: { width: isMobile ? cardWidth - 80 : cardWidth - 20 }
+            }).setOrigin(isMobile ? 0 : 0.5, 0.5);
+
             this.upgradeContainer.add(nameText);
             this.upgradeCards.push(nameText);
 
@@ -481,7 +520,7 @@ class UIScene extends Phaser.Scene {
                 border.setStrokeStyle(2, 0x00ff88, 1);
             });
             card.on('pointerout', () => {
-                card.setFillStyle(0x222255, 0.9);
+                card.setFillStyle(0x222255, 0.95);
                 border.setStrokeStyle(2, 0x00d4ff, 0.6);
             });
             card.on('pointerdown', () => {

@@ -67,7 +67,10 @@ class GameScene extends Phaser.Scene {
             shotgun: { name: 'Shotgun', fireRate: 600, bulletSpeed: 450, bulletDamage: Math.floor(15 * metaDmg), bulletLifetime: 600, bulletTexture: 'bullet_shotgun', spread: 0.3, pellets: 5, auto: false, ammo: 30, maxAmmo: 30 },
             smg: { name: 'SMG', fireRate: 80, bulletSpeed: 550, bulletDamage: Math.floor(10 * metaDmg), bulletLifetime: 800, bulletTexture: 'bullet_smg', spread: 0.15, pellets: 1, auto: true, ammo: 120, maxAmmo: 120 },
             assault: { name: 'Assault Rifle', fireRate: 120, bulletSpeed: 600, bulletDamage: Math.floor(20 * metaDmg), bulletLifetime: 1200, bulletTexture: 'bullet_ar', spread: 0.08, pellets: 1, auto: true, ammo: 60, maxAmmo: 60 },
-            flamethrower: { name: 'Flamethrower', fireRate: 50, bulletSpeed: 300, bulletDamage: Math.floor(5 * metaDmg), bulletLifetime: 400, bulletTexture: 'bullet_flame', spread: 0.4, pellets: 1, auto: true, ammo: 200, maxAmmo: 200 }
+            assault: { name: 'Assault Rifle', fireRate: 120, bulletSpeed: 600, bulletDamage: Math.floor(20 * metaDmg), bulletLifetime: 1200, bulletTexture: 'bullet_ar', spread: 0.08, pellets: 1, auto: true, ammo: 60, maxAmmo: 60 },
+            flamethrower: { name: 'Flamethrower', fireRate: 50, bulletSpeed: 300, bulletDamage: Math.floor(5 * metaDmg), bulletLifetime: 400, bulletTexture: 'bullet_flame', spread: 0.4, pellets: 1, auto: true, ammo: 200, maxAmmo: 200 },
+            burst_rifle: { name: 'Burst Rifle', fireRate: 800, bulletSpeed: 700, bulletDamage: Math.floor(22 * metaDmg), bulletLifetime: 1400, bulletTexture: 'bullet_ar', spread: 0.05, pellets: 3, burst: true, auto: false, ammo: 45, maxAmmo: 45 },
+            chain_gun: { name: 'Chain Gun', fireRate: 200, bulletSpeed: 600, bulletDamage: Math.floor(12 * metaDmg), bulletLifetime: 1000, bulletTexture: 'bullet_smg', spread: 0.15, pellets: 1, auto: true, ammo: 300, maxAmmo: 300, spinUp: 0 }
         };
         this.currentWeaponKey = 'pistol';
         this.lastFired = 0;
@@ -121,6 +124,26 @@ class GameScene extends Phaser.Scene {
                         this.events.emit('weaponSwitch', 'flamethrower');
                     }
                     this.weapons.flamethrower.ammo = this.weapons.flamethrower.maxAmmo;
+                }, once: true
+            },
+            {
+                id: 'unlock_burst_rifle', name: 'Unlock Burst Rifle', icon: '🔫', apply: () => {
+                    if (!this.unlockedWeapons.includes('burst_rifle')) {
+                        this.unlockedWeapons.push('burst_rifle');
+                        this.currentWeaponKey = 'burst_rifle';
+                        this.events.emit('weaponSwitch', 'burst_rifle');
+                    }
+                    this.weapons.burst_rifle.ammo = this.weapons.burst_rifle.maxAmmo;
+                }, once: true
+            },
+            {
+                id: 'unlock_chain_gun', name: 'Unlock Chain Gun', icon: '🔫', apply: () => {
+                    if (!this.unlockedWeapons.includes('chain_gun')) {
+                        this.unlockedWeapons.push('chain_gun');
+                        this.currentWeaponKey = 'chain_gun';
+                        this.events.emit('weaponSwitch', 'chain_gun');
+                    }
+                    this.weapons.chain_gun.ammo = this.weapons.chain_gun.maxAmmo;
                 }, once: true
             },
             { id: 'ammo_up', name: 'Refill All Ammo', icon: '📦', apply: () => { Object.values(this.weapons).forEach(w => w.ammo = w.maxAmmo); } },
@@ -186,6 +209,11 @@ class GameScene extends Phaser.Scene {
             { id: 'rapid_fire', name: 'Rapid Fire', duration: 4000, texture: 'power_rapid_fire', color: '#ffdd00' },
             { id: 'health_burst', name: 'Health Burst', duration: 0, texture: 'power_health', color: '#00ff88' },
             { id: 'coin_magnet', name: 'Coin Magnet', duration: 5000, texture: 'power_magnet', color: '#ffaa33' },
+            // Phase 5: Weapon Mods
+            { id: 'mod_ricochet', name: 'Ricochet Rounds', duration: 8000, texture: 'power_ricochet', color: '#dddddd' },
+            { id: 'mod_vampiric', name: 'Vampiric Touch', duration: 8000, texture: 'power_vampiric', color: '#aa0033' },
+            { id: 'mod_frostbite', name: 'Frostbite', duration: 6000, texture: 'power_frostbite', color: '#00aaff' },
+            { id: 'mod_spread', name: 'Spread Shot', duration: 6000, texture: 'power_spread', color: '#ffaa00' },
         ];
 
         // ===== PHASE 2: System 5 — Arena Events =====
@@ -225,6 +253,40 @@ class GameScene extends Phaser.Scene {
         this.zombies = this.physics.add.group({ classType: Phaser.Physics.Arcade.Sprite, runChildUpdate: false });
         this.xpOrbs = this.physics.add.group({ classType: Phaser.Physics.Arcade.Sprite, maxSize: 50 });
         this.coins = this.physics.add.group({ classType: Phaser.Physics.Arcade.Sprite, maxSize: 30 });
+
+        // Phase 5: Interactive Environment
+        this.barrels = this.physics.add.group({ key: 'barrel_explosive', immovable: true });
+        // Place some barrels
+        for (let i = 0; i < 15; i++) {
+            const bx = Phaser.Math.Between(100, worldWidth - 100);
+            const by = Phaser.Math.Between(100, worldHeight - 100);
+            const barrel = this.barrels.create(bx, by, 'barrel_explosive');
+            barrel.setDepth(5).setPipeline('Light2D');
+            barrel.hp = 30; // Health before exploding
+        }
+        this.physics.add.collider(this.bullets, this.barrels, this.bulletHitBarrel, null, this);
+        this.physics.add.collider(this.player, this.barrels); // Player collision with barrels
+        this.physics.add.collider(this.zombies, this.barrels); // Zombies collision with barrels
+
+        // Phase 5: Mini-Map Setup
+        this.minimapSize = 120;
+        this.minimapScale = 0.08;
+        this.minimapContainer = this.add.container(worldWidth - 140, worldHeight - 140).setDepth(1000).setScrollFactor(0);
+
+        // Reposition for UI (top-left or bottom-right depending on preference, stick to bottom-left relative to screen)
+        // Actually, let's fix position in createUI or just use fixed screen coordinates
+        const mmX = 20;
+        const mmY = 160; // Below other HUD elements
+        this.minimapContainer.setPosition(mmX, mmY);
+
+        const mmBg = this.add.rectangle(0, 0, this.minimapSize, this.minimapSize, 0x000000, 0.6).setOrigin(0);
+        const mmBorder = this.add.rectangle(0, 0, this.minimapSize, this.minimapSize).setStrokeStyle(2, 0x444444).setOrigin(0);
+        this.minimapContainer.add([mmBg, mmBorder]);
+
+        this.mmPlayer = this.add.circle(0, 0, 3, 0x00ff00);
+        this.minimapContainer.add(this.mmPlayer);
+
+        this.mmDots = []; // Pool of dots
 
         // Phase 2: Power drops
         this.powerDrops = this.physics.add.group({ classType: Phaser.Physics.Arcade.Sprite, maxSize: 10 });
@@ -603,10 +665,12 @@ class GameScene extends Phaser.Scene {
             currentLevel: this.currentLevel,
             killProgress: this.zombiesKilledThisWave,
             killTarget: this.zombiesPerWave,
-            bossHP: this.bossRef && this.bossRef.active ? this.bossRef.hp : 0,
             bossMaxHP: this.bossRef ? this.bossRef.maxHP : 0,
             levelsCompleted: this.levelsCompleted
         });
+
+        // Phase 5: Mini-map Update (every 5 frames to save perf)
+        if (time % 5 === 0) this.updateMinimap();
     }
 
     // ==================== VISUALS UPDATE ====================
@@ -668,6 +732,81 @@ class GameScene extends Phaser.Scene {
             }
         }
 
+        if (this.sys.game.device.input.touch && !this.sys.game.device.os.desktop) {
+            // Mobile Controls Setup - moved to corner to avoid overlap
+            this.input.addPointer(2); // Ensure multi-touch
+
+            // Joystick Base (Left Bottom) - Move up slightly to avoid bottom bezel
+            this.joyBase = this.add.circle(100, height - 120, 60, 0x888888).setAlpha(0.3).setDepth(1000).setScrollFactor(0);
+            this.joyThumb = this.add.circle(100, height - 120, 30, 0xcccccc).setAlpha(0.5).setDepth(1001).setScrollFactor(0);
+
+            // Fire Button (Right Bottom) - Larger and clearer
+            this.fireBtn = this.add.circle(width - 80, height - 100, 45, 0xff4444).setAlpha(0.5).setDepth(1000).setScrollFactor(0).setInteractive();
+            this.fireBtnText = this.add.text(width - 80, height - 100, '🔥', { fontSize: '32px' }).setOrigin(0.5).setDepth(1001).setScrollFactor(0);
+
+            // Dash Button (Right Bottom, above Fire)
+            this.dashBtn = this.add.circle(width - 60, height - 200, 35, 0x4444ff).setAlpha(0.5).setDepth(1000).setScrollFactor(0).setInteractive();
+            this.dashBtnText = this.add.text(width - 60, height - 200, '💨', { fontSize: '24px' }).setOrigin(0.5).setDepth(1001).setScrollFactor(0);
+
+            // Switch Weapon Button (Right Center)
+            this.switchBtn = this.add.circle(width - 60, height - 280, 30, 0x44ff44).setAlpha(0.5).setDepth(1000).setScrollFactor(0).setInteractive();
+            this.switchBtnText = this.add.text(width - 60, height - 280, '🔫', { fontSize: '20px' }).setOrigin(0.5).setDepth(1001).setScrollFactor(0);
+
+            // Touch Events
+            this.fireBtn.on('pointerdown', () => { this.isFiring = true; this.fireBtn.setAlpha(0.8); });
+            this.fireBtn.on('pointerup', () => { this.isFiring = false; this.fireBtn.setAlpha(0.5); });
+            this.fireBtn.on('pointerout', () => { this.isFiring = false; this.fireBtn.setAlpha(0.5); });
+
+            this.dashBtn.on('pointerdown', () => {
+                if (this.canDash && !this.isDashing) {
+                    this.dash();
+                    this.dashBtn.setAlpha(0.8);
+                }
+            });
+            this.dashBtn.on('pointerup', () => { this.dashBtn.setAlpha(0.5); });
+
+            this.switchBtn.on('pointerdown', () => {
+                const nextWeaponIndex = (Object.keys(this.weapons).indexOf(this.currentWeaponKey) + 1) % this.unlockedWeapons.length;
+                this.switchWeapon(nextWeaponIndex);
+                this.switchBtn.setAlpha(0.8);
+                // Visual feedback
+                this.tweens.add({ targets: this.switchBtn, scale: 1.2, duration: 100, yoyo: true });
+            });
+            this.switchBtn.on('pointerup', () => this.switchBtn.setAlpha(0.5));
+
+            // Joystick Logic
+            this.input.on('pointermove', (pointer) => {
+                if (!pointer.isDown) return;
+
+                // Left side screen logic for joystick
+                if (pointer.x < width / 2) {
+                    const dist = Phaser.Math.Distance.Between(this.joyBase.x, this.joyBase.y, pointer.x, pointer.y);
+                    const angle = Phaser.Math.Angle.Between(this.joyBase.x, this.joyBase.y, pointer.x, pointer.y);
+
+                    if (dist < 150) { // Drag threshold
+                        const clampDist = Math.min(dist, 60);
+                        this.joyThumb.x = this.joyBase.x + Math.cos(angle) * clampDist;
+                        this.joyThumb.y = this.joyBase.y + Math.sin(angle) * clampDist;
+
+                        // Fake WASD keys
+                        this.joyKeys = {
+                            left: { isDown: Math.cos(angle) < -0.3 },
+                            right: { isDown: Math.cos(angle) > 0.3 },
+                            up: { isDown: Math.sin(angle) < -0.3 },
+                            down: { isDown: Math.sin(angle) > 0.3 }
+                        };
+                    }
+                }
+            });
+
+            this.input.on('pointerup', (pointer) => {
+                if (pointer.x < width / 2) {
+                    this.joyThumb.x = this.joyBase.x;
+                    this.joyThumb.y = this.joyBase.y;
+                    this.joyKeys = { left: { isDown: false }, right: { isDown: false }, up: { isDown: false }, down: { isDown: false } };
+                }
+            });
+        }
         // 2. Mobile Joystick (if no auto-aim target)
         if (!angleSet && this.isMobile) {
             const vx = this.player.body.velocity.x, vy = this.player.body.velocity.y;
@@ -781,23 +920,43 @@ class GameScene extends Phaser.Scene {
             angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, worldPoint.x, worldPoint.y);
         }
 
-        for (let i = 0; i < weapon.pellets; i++) {
-            const spreadAngle = angle + (Math.random() - 0.5) * weapon.spread * 2;
-            const bullet = this.bullets.get(this.player.x, this.player.y, weapon.bulletTexture);
-            if (!bullet) continue;
-            bullet.setActive(true).setVisible(true).setDepth(5).setScale(1).setAlpha(1);
-            bullet.body.enable = true;
-            if (weapon.bulletTexture === 'bullet_flame') {
-                bullet.setBlendMode(Phaser.BlendModes.ADD);
+        if (weapon.burst) {
+            // Burst fire logic
+            this.time.addEvent({
+                delay: 100, repeat: 2,
+                callback: () => this.fireBullet(angle, weapon)
+            });
+        } else if (weapon.name === 'Chain Gun') {
+            // Spin up mechanic
+            if (this.input.activePointer.isDown) {
+                weapon.spinUp = Math.min((weapon.spinUp || 0) + 0.1, 1);
+                // Fire rate increases (delay decreases) as spinUp increases
+                // Base delay 200ms -> Min delay 50ms
+                const currentDelay = 200 - (150 * weapon.spinUp);
+                // Simplified: Fire multiple pellets if fully spun
+                if (weapon.spinUp > 0.8 && Math.random() < 0.5) {
+                    this.fireBullet(angle + 0.1, weapon); // Extra shot
+                }
             } else {
-                bullet.setBlendMode(Phaser.BlendModes.NORMAL);
+                weapon.spinUp = Math.max((weapon.spinUp || 0) - 0.05, 0);
             }
-            this.physics.velocityFromRotation(spreadAngle, weapon.bulletSpeed, bullet.body.velocity);
-            bullet.setRotation(spreadAngle);
-            bullet.spawnTime = time; bullet.damage = weapon.bulletDamage; bullet.lifetime = weapon.bulletLifetime;
+
+            const spreadAngle = angle + (Math.random() - 0.5) * weapon.spread;
+            this.fireBullet(spreadAngle, weapon);
+        } else {
+            for (let i = 0; i < weapon.pellets; i++) {
+                const spreadAngle = angle + (Math.random() - 0.5) * weapon.spread;
+                this.fireBullet(spreadAngle, weapon);
+            }
         }
 
         if (weapon.ammo !== Infinity) weapon.ammo--;
+
+        // Phase 5: Spread Shot Mod
+        if (this.activePower && this.activePower.id === 'mod_spread') {
+            this.fireBullet(angle - 0.2, weapon);
+            this.fireBullet(angle + 0.2, weapon);
+        }
 
         // Muzzle flash with glow effect
         const mfX = this.player.x + Math.cos(angle) * 20;
@@ -807,7 +966,6 @@ class GameScene extends Phaser.Scene {
         this.tweens.add({ targets: muzzle, alpha: 0, scale: 0.5, duration: 80, onComplete: () => muzzle.destroy() });
 
         this.playSound('shoot');
-        this.playSound('shoot');
         if (weapon.ammo === 0 && weapon.ammo !== Infinity) {
             this.switchWeapon(0);
             this.showDamageNumber(this.player.x, this.player.y - 40, 'NO AMMO!', '#ff0000');
@@ -815,7 +973,7 @@ class GameScene extends Phaser.Scene {
     }
 
     // ==================== ZOMBIE SYSTEM ====================
-    spawnZombie() {
+    spawnZombie(x, y) {
         if (this.gameOver || this.isPaused || this.upgradeMenuActive || this.stageClearActive) return;
         if (!this.currentLevel.isBoss && this.zombiesSpawnedThisWave >= this.zombiesPerWave) return;
 
@@ -824,73 +982,250 @@ class GameScene extends Phaser.Scene {
         if (aliveZombies >= (this.maxEnemiesOnScreen || 25)) return;
 
         const camera = this.cameras.main; const margin = 120;
-        let x, y; const side = Phaser.Math.Between(0, 3);
-        switch (side) {
-            case 0: x = Phaser.Math.Between(camera.scrollX - margin, camera.scrollX + camera.width + margin); y = camera.scrollY - margin; break;
-            case 1: x = camera.scrollX + camera.width + margin; y = Phaser.Math.Between(camera.scrollY - margin, camera.scrollY + camera.height + margin); break;
-            case 2: x = Phaser.Math.Between(camera.scrollX - margin, camera.scrollX + camera.width + margin); y = camera.scrollY + camera.height + margin; break;
-            case 3: x = camera.scrollX - margin; y = Phaser.Math.Between(camera.scrollY - margin, camera.scrollY + camera.height + margin); break;
+
+        // Find valid spawn pos if not provided
+        if (x === undefined || y === undefined) {
+            let attempts = 0;
+            // Linear Level Logic: Bias towards spawning ahead
+            do {
+                attempts++;
+                if (this.worldWidth > 2000) { // Linear
+                    // 70% chance to spawn ahead, 30% behind/around
+                    if (Math.random() < 0.7) {
+                        x = this.cameras.main.scrollX + this.cameras.main.width + margin;
+                        y = Phaser.Math.Between(50, this.worldHeight - 50);
+                    } else {
+                        x = this.cameras.main.scrollX - margin;
+                        y = Phaser.Math.Between(50, this.worldHeight - 50);
+                    }
+                } else { // Classic arena
+                    const side = Phaser.Math.Between(0, 3);
+                    switch (side) {
+                        case 0: x = Phaser.Math.Between(camera.scrollX - margin, camera.scrollX + camera.width + margin); y = camera.scrollY - margin; break;
+                        case 1: x = camera.scrollX + camera.width + margin; y = Phaser.Math.Between(camera.scrollY - margin, camera.scrollY + camera.height + margin); break;
+                        case 2: x = Phaser.Math.Between(camera.scrollX - margin, camera.scrollX + camera.width + margin); y = camera.scrollY + camera.height + margin; break;
+                        case 3: x = camera.scrollX - margin; y = Phaser.Math.Between(camera.scrollY - margin, camera.scrollY + camera.height + margin); break;
+                    }
+                }
+                x = Phaser.Math.Clamp(x, 20, this.worldWidth - 20); y = Phaser.Math.Clamp(y, 20, this.worldHeight - 20);
+            } while (attempts < 2);
         }
-        x = Phaser.Math.Clamp(x, 20, this.worldWidth - 20); y = Phaser.Math.Clamp(y, 20, this.worldHeight - 20);
 
-        // Linear Level Logic: Bias towards spawning ahead
-        if (this.player.x < this.worldWidth - 1000) {
-            if (Math.random() < 0.7) {
-                // Spawn ahead
-                x = this.cameras.main.scrollX + this.cameras.main.width + margin;
-                y = Phaser.Math.Between(20, this.worldHeight - 20);
-            }
+        // Determine Type based on level/wave or random
+        let type = 'normal';
+        const wave = this.wave;
+        const roll = Math.random();
+
+        // Progressive difficulty spawn logic
+        if (wave >= 12 && roll < 0.05) type = 'summoner';
+        else if (wave >= 10 && roll < 0.08) type = 'tank';
+        else if (wave >= 9 && roll < 0.10) type = 'shield_bearer';
+        else if (wave >= 8 && roll < 0.12) type = 'charger';
+        else if (wave >= 7 && roll < 0.14) type = 'stalker';
+        else if (wave >= 6 && roll < 0.15) type = 'spitter';
+        else if (wave >= 4 && roll < 0.20) type = 'burster';
+        else if (wave >= 2 && roll < 0.25) type = 'runner';
+
+        // Use pool if defined
+        if (this.currentLevel.enemyPool && this.currentLevel.enemyPool.length > 0) {
+            type = Phaser.Utils.Array.GetRandom(this.currentLevel.enemyPool);
         }
 
-        // Use enemy pool from level data
-        const pool = this.enemyPool || ['normal'];
-        const zombieType = Phaser.Utils.Array.GetRandom(pool);
-        const lvlNum = this.currentLevel.level || 1;
-
-        let texture, hp, damage, speed, xpReward, bodySize;
-        switch (zombieType) {
-            case 'runner': texture = 'zombie_runner'; hp = this.zombieBaseHP * 0.6; damage = this.zombieBaseDamage * 0.8; speed = this.zombieBaseSpeed * 1.8; xpReward = 15 + lvlNum * 2; bodySize = 20; break;
-            case 'tank': texture = 'zombie_tank'; hp = this.zombieBaseHP * 3; damage = this.zombieBaseDamage * 1.5; speed = this.zombieBaseSpeed * 0.6; xpReward = 30 + lvlNum * 3; bodySize = 36; break;
-            default: texture = 'zombie'; hp = this.zombieBaseHP; damage = this.zombieBaseDamage; speed = this.zombieBaseSpeed; xpReward = 10 + lvlNum * 2; bodySize = 26; break;
-        }
-
-        // Object pooling: Use get() instead of create()
-        const zombie = this.zombies.get(x, y, texture);
+        let zombie = this.zombies.get(x, y, 'zombie');
         if (!zombie) return;
-        zombie.setVisible(true).setActive(true);
-        zombie.enableBody(true, x, y, true, true);
-        zombie.setDepth(8); zombie.body.setSize(bodySize, bodySize);
-        zombie.body.setOffset((zombie.width - bodySize) / 2, (zombie.height - bodySize) / 2);
-        zombie.hp = hp; zombie.maxHP = hp; zombie.damage = damage; zombie.speed = speed;
-        zombie.xpReward = xpReward; zombie.zombieType = zombieType;
-        zombie.isElite = false; zombie.eliteModifier = null;
-        zombie.clearTint(); zombie.setAlpha(1).setScale(1);
-        zombie.setPipeline('Light2D');
-        zombie.isBossZombie = false; // Reset boss flag for pooled objects
 
-        // Phase 2: Elite zombie chance (after wave 3)
-        if (this.wave >= 3 && Math.random() < this.eliteSpawnChance && zombieType !== 'boss') {
+        zombie.setActive(true).setVisible(true);
+        zombie.enableBody(true, x, y, true, true);
+
+        let hp = this.zombieBaseHP;
+        let speed = this.zombieBaseSpeed;
+        let damage = this.zombieBaseDamage;
+        let xpReward = 10 + this.currentLevel.level;
+        let bodySize = 26;
+        let texture = 'zombie';
+        let tint = 0xffffff;
+        let scale = 1;
+
+        switch (type) {
+            case 'runner': texture = 'zombie_runner'; hp *= 0.6; speed *= 1.8; damage *= 0.8; xpReward += 5; bodySize = 20; break;
+            case 'tank': texture = 'zombie_tank'; hp *= 3; speed *= 0.6; damage *= 1.5; scale = 1.3; xpReward += 20; bodySize = 36; break;
+            case 'burster': texture = 'zombie'; hp *= 0.8; speed *= 1.2; tint = 0xff4400; xpReward += 10;
+                zombie.eliteModifier = 'exploder'; zombie.isElite = true; break;
+            case 'charger': texture = 'zombie_tank'; hp *= 1.5; speed *= 0.9; scale = 0.9; tint = 0x5555ff; xpReward += 15; bodySize = 30;
+                zombie.chargeCooldown = 0; zombie.isCharging = false; break;
+            case 'spitter': texture = 'zombie_runner'; hp *= 0.7; speed *= 0.8; tint = 0x00ff00; xpReward += 15;
+                zombie.attackCooldown = 0; break;
+            case 'summoner': texture = 'zombie_boss'; hp *= 1.2; speed *= 0.5; scale = 0.8; tint = 0xaa00aa; xpReward += 25;
+                zombie.summonCooldown = 0; break;
+            case 'shield_bearer': texture = 'zombie_tank'; hp *= 1.4; speed *= 0.7; scale = 1.1; tint = 0x555555; xpReward += 20; bodySize = 32;
+                // Add Shield visual
+                const shield = this.add.image(0, 20, 'enemy_shield').setOrigin(0.5, 0.5);
+                zombie.shieldVisual = shield; // Link to zombie to update pos
+                break;
+            case 'stalker': texture = 'zombie_runner'; hp *= 0.5; speed *= 1.4; tint = 0x333333; xpReward += 18;
+                zombie.stalkTimer = 0; zombie.isHidden = false; zombie.setAlpha(0.8);
+                break;
+        }
+
+        zombie.setTexture(texture);
+        zombie.hp = hp; zombie.maxHP = hp; zombie.damage = damage; zombie.speed = speed;
+        zombie.xpReward = xpReward; zombie.zombieType = type;
+        zombie.setScale(scale).setTint(tint);
+        if (type !== 'stalker') zombie.setAlpha(1); // Stalker has its own alpha logic
+        zombie.setPipeline('Light2D');
+
+        zombie.body.setSize(bodySize, bodySize);
+        zombie.body.setOffset((zombie.width - bodySize) / 2, (zombie.height - bodySize) / 2);
+
+        zombie.isAttached = false;
+        zombie.isBossZombie = false;
+
+        // Phase 2: Elite zombie chance
+        if (this.wave >= 3 && Math.random() < this.eliteSpawnChance && ['normal', 'runner'].includes(type)) {
             this.makeElite(zombie);
         }
-
-        // Phase 2: Freeze power — new zombies spawn frozen
-        if (this.activePower && this.activePower.id === 'freeze') {
-            zombie.speed = 0; zombie.setTint(0x88ddff);
-        }
-
-        zombie.setAlpha(0).setScale(0.3);
-        this.tweens.add({ targets: zombie, alpha: 1, scaleX: 1, scaleY: 1, duration: 300, ease: 'Back.easeOut' });
 
         this.zombiesSpawnedThisWave++;
     }
 
     updateZombies() {
-        this.zombies.getChildren().forEach((zombie) => {
+        if (!this.player.active) return;
+        const player = this.player;
+
+        this.zombies.getChildren().forEach(zombie => {
             if (!zombie.active) return;
-            const angle = Phaser.Math.Angle.Between(zombie.x, zombie.y, this.player.x, this.player.y);
-            this.physics.velocityFromRotation(angle, zombie.speed, zombie.body.velocity);
-            zombie.setRotation(angle);
+
+            const dist = Phaser.Math.Distance.Between(zombie.x, zombie.y, player.x, player.y);
+
+            // Charger Logic
+            if (zombie.zombieType === 'charger') {
+                if (zombie.isCharging) {
+                    if (zombie.body.speed < 50) {
+                        zombie.isCharging = false;
+                        zombie.chargeCooldown = 2000;
+                        zombie.speed = zombie.origSpeed || this.zombieBaseSpeed * 0.8;
+                        zombie.setTint(0x888888);
+                        this.time.delayedCall(1000, () => { if (zombie.active) zombie.clearTint(); });
+                    }
+                } else {
+                    if (dist < 400 && dist > 100 && (!zombie.chargeCooldown || zombie.chargeCooldown <= 0)) {
+                        zombie.isCharging = true;
+                        zombie.origSpeed = zombie.speed;
+                        this.physics.moveToObject(zombie, player, 500);
+                        const telegraph = this.add.circle(zombie.x, zombie.y, 10, 0xff0000, 0.5).setDepth(10);
+                        this.tweens.add({ targets: telegraph, scale: 3, alpha: 0, duration: 500, onComplete: () => telegraph.destroy() });
+                        this.time.delayedCall(1500, () => { if (zombie.active) zombie.isCharging = false; });
+                    } else {
+                        if (zombie.chargeCooldown > 0) zombie.chargeCooldown -= 16;
+                        this.physics.moveToObject(zombie, player, zombie.speed);
+                    }
+                }
+            }
+            // Spitter Logic
+            else if (zombie.zombieType === 'spitter') {
+                if (dist < 300) {
+                    zombie.body.setVelocity(0, 0); // Stop to shoot
+                    if (!zombie.attackCooldown || zombie.attackCooldown <= 0) {
+                        this.spitProjectile(zombie, player);
+                        zombie.attackCooldown = 2000;
+                    } else {
+                        zombie.attackCooldown -= 16;
+                    }
+                } else {
+                    this.physics.moveToObject(zombie, player, zombie.speed);
+                }
+            }
+            // Summoner Logic
+            else if (zombie.zombieType === 'summoner') {
+                // Keep distance
+                if (dist < 250) {
+                    const angle = Phaser.Math.Angle.Between(player.x, player.y, zombie.x, zombie.y);
+                    this.physics.velocityFromRotation(angle, zombie.speed, zombie.body.velocity);
+                } else if (dist > 400) {
+                    this.physics.moveToObject(zombie, player, zombie.speed);
+                } else {
+                    zombie.body.setVelocity(0, 0); // Stand still
+                }
+
+                if (!zombie.summonCooldown || zombie.summonCooldown <= 0) {
+                    this.summonZombies(zombie);
+                    zombie.summonCooldown = 5000;
+                } else {
+                    zombie.summonCooldown -= 16;
+                }
+            }
+            // Shield Bearer Logic
+            else if (zombie.zombieType === 'shield_bearer') {
+                this.physics.moveToObject(zombie, player, zombie.speed);
+                if (zombie.shieldVisual) {
+                    const angle = zombie.rotation;
+                    // Position shield in front of zombie
+                    zombie.shieldVisual.x = zombie.x + Math.cos(angle) * 15;
+                    zombie.shieldVisual.y = zombie.y + Math.sin(angle) * 15;
+                    zombie.shieldVisual.rotation = angle;
+                }
+            }
+            // Stalker Logic
+            else if (zombie.zombieType === 'stalker') {
+                this.physics.moveToObject(zombie, player, zombie.speed);
+                const distToP = Phaser.Math.Distance.Between(zombie.x, zombie.y, player.x, player.y);
+
+                // Cloak if far, Decloak to attack
+                if (distToP > 250) {
+                    if (!zombie.isHidden && zombie.alpha > 0.1) {
+                        zombie.alpha -= 0.05;
+                    }
+                    zombie.isHidden = true;
+                } else {
+                    // Ambush!
+                    if (zombie.isHidden) {
+                        zombie.isHidden = false;
+                        zombie.setTint(0xffffff); // Flash white
+                        this.time.delayedCall(200, () => { if (zombie.active) zombie.clearTint(); });
+                    }
+                    if (zombie.alpha < 1) zombie.alpha += 0.1;
+                }
+            }
+            // Attached Logic
+            else if (zombie.isAttached) {
+                // Handled in updateAttachedZombies
+            }
+            // Default Logic
+            else {
+                this.physics.moveToObject(zombie, player, zombie.speed);
+            }
+
+            // Sync rotation
+            zombie.rotation = Phaser.Math.Angle.Between(zombie.x, zombie.y, player.x, player.y);
         });
+    }
+
+    spitProjectile(spitter, target) {
+        if (!this.enemyProjectiles) {
+            this.enemyProjectiles = this.physics.add.group({ classType: Phaser.Physics.Arcade.Image });
+            this.physics.add.overlap(this.player, this.enemyProjectiles, (player, proj) => {
+                proj.destroy();
+                this.takeDamage(10);
+            });
+        }
+        const proj = this.enemyProjectiles.get(spitter.x, spitter.y, 'bullet_flame'); // Re-use flame texture
+        if (proj) {
+            proj.setActive(true).setVisible(true).setTint(0x00ff00);
+            this.physics.moveToObject(proj, target, 300);
+            this.time.delayedCall(2000, () => { if (proj.active) proj.destroy(); });
+        }
+    }
+
+    summonZombies(summoner) {
+        // Spawn 2 normal zombies around summoner
+        for (let i = 0; i < 2; i++) {
+            const ox = Phaser.Math.Between(-40, 40);
+            const oy = Phaser.Math.Between(-40, 40);
+            this.spawnZombie(summoner.x + ox, summoner.y + oy);
+        }
+        // Visual effect
+        const circle = this.add.circle(summoner.x, summoner.y, 40, 0xaa00aa, 0.3);
+        this.tweens.add({ targets: circle, scale: 2, alpha: 0, duration: 500, onComplete: () => circle.destroy() });
     }
 
     // ==================== COLLISION ====================
@@ -899,8 +1234,65 @@ class GameScene extends Phaser.Scene {
         bullet.setActive(false).setVisible(false); bullet.body.enable = false;
 
         let damage = bullet.damage;
-        // Phase 2: Double damage power-up
-        if (this.activePower && this.activePower.id === 'double_damage') damage *= 2;
+
+        // Phase 5: Shield Logic
+        if (zombie.zombieType === 'shield_bearer') {
+            const angleToBullet = Phaser.Math.Angle.Between(zombie.x, zombie.y, bullet.x, bullet.y);
+            const angleDiff = Phaser.Math.Angle.Wrap(angleToBullet - zombie.rotation);
+            // Front arc protection (approx 90 degrees)
+            if (Math.abs(angleDiff) < 0.8) {
+                this.showDamageNumber(zombie.x, zombie.y - 20, 'BLOCKED', '#aaaaaa');
+                this.playSound('hit'); // Metal sound ideally
+                return; // No damage
+            }
+        }
+
+        // Phase 5: Stalker Weakness
+        if (zombie.zombieType === 'stalker' && !zombie.isHidden) {
+            damage *= 1.5; // Critical hit when decloaked
+            this.showDamageNumber(zombie.x, zombie.y - 30, 'CRIT!', '#ff0000');
+        }
+
+        // Phase 5: Weapon Mod Effects
+        if (this.activePower) {
+            const ap = this.activePower.id;
+            if (ap === 'double_damage') damage *= 2;
+
+            if (ap === 'mod_vampiric') {
+                // Heal 1 HP occasionally
+                if (Math.random() < 0.3) {
+                    this.playerHP = Math.min(this.playerHP + 1, this.playerMaxHP);
+                    this.showDamageNumber(this.player.x, this.player.y - 20, '+1', '#ff0033');
+                }
+            }
+
+            if (ap === 'mod_frostbite') {
+                // Slow down zombie
+                if (zombie.speed > 5) {
+                    zombie.speed *= 0.5;
+                    zombie.setTint(0x00aaff);
+                    this.time.delayedCall(1000, () => { if (zombie.active) zombie.speed = Math.max(zombie.speed * 2, 10); zombie.clearTint(); });
+                }
+            }
+
+            if (ap === 'mod_ricochet') {
+                // Bounce logic: Find nearest other zombie
+                const nearest = this.getNearestZombieExcluding(zombie, 200);
+                if (nearest) {
+                    // Create new bounce bullet
+                    const angle = Phaser.Math.Angle.Between(zombie.x, zombie.y, nearest.x, nearest.y);
+                    const bounce = this.bullets.get(zombie.x, zombie.y, bullet.texture.key);
+                    if (bounce) {
+                        bounce.setActive(true).setVisible(true).setBodySize(bullet.width, bullet.height);
+                        this.physics.velocityFromRotation(angle, 400, bounce.body.velocity);
+                        bounce.damage = damage * 0.5; // Reduced damage on bounce
+                        bounce.lifetime = 300;
+                        bounce.spawnTime = this.time.now;
+                        bounce.setRotation(angle);
+                    }
+                }
+            }
+        }
         // Phase 2: Shielded elite — absorbs 50% damage
         if (zombie.eliteModifier === 'shielded' && zombie.shieldHP > 0) {
             zombie.shieldHP -= damage * 0.5;
@@ -942,14 +1334,54 @@ class GameScene extends Phaser.Scene {
         // Phase 2: Exploder elite — damages nearby zombies & player
         if (zombie.eliteModifier === 'exploder') {
             this.cameras.main.shake(200, 0.015);
-            for (let i = 0; i < 12; i++) {
-                const ep = this.add.image(zombie.x, zombie.y, 'explosion_particle')
-                    .setDepth(12).setBlendMode(Phaser.BlendModes.ADD).setScale(1 + Math.random());
-                const a = Math.random() * Math.PI * 2, d = 20 + Math.random() * 60;
-                this.tweens.add({ targets: ep, x: zombie.x + Math.cos(a) * d, y: zombie.y + Math.sin(a) * d, alpha: 0, scale: 0, duration: 400, onComplete: () => ep.destroy() });
+            this.explode(zombie.x, zombie.y, 100, 50);
+        }
+
+        // Cleanup shield visual
+        if (zombie.shieldVisual) {
+            zombie.shieldVisual.destroy();
+            zombie.shieldVisual = null;
+        }
+
+        // Phase 5: Weapon Mod Effects
+        if (this.activePower) {
+            const ap = this.activePower.id;
+            if (ap === 'double_damage') damage *= 2;
+
+            if (ap === 'mod_vampiric') {
+                // Heal 1 HP occasionally
+                if (Math.random() < 0.3) {
+                    this.playerHP = Math.min(this.playerHP + 1, this.playerMaxHP);
+                    this.showDamageNumber(this.player.x, this.player.y - 20, '+1', '#ff0033');
+                }
             }
-            const dist = Phaser.Math.Distance.Between(zombie.x, zombie.y, this.player.x, this.player.y);
-            if (dist < 100 && !this.isDashing) { this.playerHP -= 15; this.cameras.main.shake(100, 0.01); }
+
+            if (ap === 'mod_frostbite') {
+                // Slow down zombie
+                if (zombie.speed > 5) {
+                    zombie.speed *= 0.5;
+                    zombie.setTint(0x00aaff);
+                    this.time.delayedCall(1000, () => { if (zombie.active) zombie.speed = Math.max(zombie.speed * 2, 10); zombie.clearTint(); });
+                }
+            }
+
+            if (ap === 'mod_ricochet') {
+                // Bounce logic: Find nearest other zombie
+                const nearest = this.getNearestZombieExcluding(zombie, 200);
+                if (nearest) {
+                    // Create new bounce bullet
+                    const angle = Phaser.Math.Angle.Between(zombie.x, zombie.y, nearest.x, nearest.y);
+                    const bounce = this.bullets.get(zombie.x, zombie.y, bullet.texture.key);
+                    if (bounce) {
+                        bounce.setActive(true).setVisible(true).setBodySize(bullet.width, bullet.height);
+                        this.physics.velocityFromRotation(angle, 400, bounce.body.velocity);
+                        bounce.damage = damage * 0.5; // Reduced damage on bounce
+                        bounce.lifetime = 300;
+                        bounce.spawnTime = this.time.now;
+                        bounce.setRotation(angle);
+                    }
+                }
+            }
         }
 
         // Cleanup elite visuals
@@ -1160,6 +1592,62 @@ class GameScene extends Phaser.Scene {
         // Advance to next level after delay
         // Advance to next level after UI interaction (handled by UIScene 'nextLevel' event)
         // this.time.delayedCall(3000, () => { ... });
+    }
+
+    // Phase 5: Barrel Logic
+    bulletHitBarrel(bullet, barrel) {
+        if (!bullet.active || !barrel.active) return;
+        bullet.setActive(false).setVisible(false);
+        barrel.hp -= bullet.damage;
+        barrel.setTint(0xff8888);
+        this.time.delayedCall(50, () => { if (barrel.active) barrel.clearTint(); });
+
+        if (barrel.hp <= 0) {
+            this.explode(barrel.x, barrel.y, 180, 80);
+            barrel.destroy();
+        }
+    }
+
+    // Phase 5: Mini-map Logic
+    updateMinimap() {
+        if (!this.minimapContainer.visible) return;
+
+        // Player dot (relative to world)
+        // Map world coordinates to minimap coordinates
+        // World: 0 -> worldWidth / 2 -> worldWidth
+        // MM: 0 -> 60 -> 120 (size)
+        // We want the player CENTRED on minimap? Or map entire world?
+        // Map entire world approach first (simple radar)
+
+        const scaleX = this.minimapSize / this.worldWidth;
+        const scaleY = this.minimapSize / this.worldHeight;
+
+        this.mmPlayer.x = this.player.x * scaleX;
+        this.mmPlayer.y = this.player.y * scaleY;
+
+        // Clear old dots
+        this.mmDots.forEach(d => d.destroy());
+        this.mmDots = [];
+
+        // Enemies
+        const maxDots = 20; // Limit rendering
+        let count = 0;
+        this.zombies.getChildren().forEach(z => {
+            if (!z.active || count > maxDots) return;
+            // Only show nearby enemies or elites?
+            // Show all for now but capped
+            const dot = this.add.image(z.x * scaleX, z.y * scaleY, 'mm_enemy').setTint(z.isElite ? 0xffaa00 : 0xff0000);
+            this.minimapContainer.add(dot);
+            this.mmDots.push(dot);
+            count++;
+        });
+
+        // Boss
+        if (this.bossRef && this.bossRef.active) {
+            const bossDot = this.add.image(this.bossRef.x * scaleX, this.bossRef.y * scaleY, 'mm_objective').setScale(1.5);
+            this.minimapContainer.add(bossDot);
+            this.mmDots.push(bossDot);
+        }
     }
 
     advanceToNextLevel() {
@@ -1935,6 +2423,21 @@ class GameScene extends Phaser.Scene {
             }
             this.nextAttachDamage = time + 500; // Tick every 0.5s
         }
+    }
+
+    // Helper for Ricochet
+    getNearestZombieExcluding(excludeZombie, maxDist) {
+        let nearest = null;
+        let minDist = maxDist;
+        this.zombies.getChildren().forEach(z => {
+            if (!z.active || z === excludeZombie) return;
+            const dist = Phaser.Math.Distance.Between(excludeZombie.x, excludeZombie.y, z.x, z.y);
+            if (dist < minDist) {
+                minDist = dist;
+                nearest = z;
+            }
+        });
+        return nearest;
     }
 }
 

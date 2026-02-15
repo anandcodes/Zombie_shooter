@@ -1,241 +1,108 @@
-ROLE
-You are a Phaser.js game developer implementing Phase 3 of the web game:
+# Zombie Killer Arena — Phase 5 README
 
-Zombie Killer Arena
+## Enhanced Systems & Strategic Depth
 
-This is a mobile-friendly 2D top-down zombie shooter built using Phaser.js.
-
-Phase 1 and Phase 2 systems already exist:
-
-* Player movement
-* Shooting system
-* Zombie AI
-* Combo system
-* Upgrade system
-* Elite enemies
-* Power drops
-* UI HUD
-
-Your task is to implement **Level-Based Arcade Progression (Levels 1–30)**.
-
-All code must be modular and Phaser-compatible.
-
-Do not redesign systems — implement them.
+Phase 5 focuses on deepening the strategic elements of the gameplay, adding more sophisticated enemy AI, and polishing the overall experience. The goal is to move beyond simple "shoot and run" mechanics to require more thoughtful play.
 
 ---
 
-## IMPLEMENTATION OBJECTIVE
+## Phase 5 Goals
 
-Convert the game from:
-Wave survival mode
-
-Into:
-Level progression system (Contra-style structure)
-
-Structure:
-6 stages total
-Each stage contains:
-4 normal levels + 1 boss level
-
-Total levels: 30
+The AI agent must implement:
+*   **Advanced Enemy Behaviors**: Flanking, ambushing, and shielding.
+*   **Interactive Environment**: Destructible obstacles, traps, and hazards.
+*   **Weapon Mods System**: Temporary power-ups that alter weapon behavior.
+*   **Mini-Map**: A radar system to track enemies and objectives.
+*   **Achievement System**: Long-term goals for replayability.
+*   **Boss Mechanics**: Multi-stage boss fights.
 
 ---
 
-## SYSTEM 1 — LEVEL MANAGER
+## Advanced Enemy AI
 
-Create:
-LevelManager.js
+### Shield Bearer
+*   **Behavior**: Moves slowly towards the player with a forward-facing shield.
+*   **Defense**: Blocks all frontal attacks.
+*   **Weakness**: Vulnerable from the back or to explosive damage.
 
-Responsibilities:
+### Stalker
+*   **Behavior**: Turns invisible periodically.
+*   **Attack**: Approaches while invisible, then decloaks to strike.
+*   **Counter**: Takes extra damage while decloaking.
 
-* Load LevelConfig
-* Track current level
-* Start and end levels
-* Trigger boss levels
-* Manage spawn timers
-* Transition between levels
-
-Use Phaser timer events for spawning.
-
-LevelConfig example:
-
-const LevelConfig = {
-id: 3,
-stage: "Outskirts",
-duration: 80,
-spawnInterval: 1600,
-maxEnemies: 8,
-enemyPool: ["walker","runner"],
-modifier: "fog",
-bossId: null
-};
-
-Spawn logic rule:
-Never exceed maxEnemies on screen.
+### Swarmer
+*   **Behavior**: Moves in tight packs.
+*   **Tactic**: Attempts to surround the player.
 
 ---
 
-## SYSTEM 2 — SPAWN SYSTEM
+## Interactive Environment
 
-Modify existing spawn system to use:
+### Explosive Barrels
+*   **Interaction**: Explode when shot, damaging nearby enemies.
+*   **Types**: Fire (Burn), Ice (Freeze), Acid (Corrosion).
 
-spawnInterval
-maxEnemies
-enemyPool
+### Spikes & Traps
+*   **Hazard**: Floor spikes that activate periodically.
+*   **Strategy**: Lure enemies into traps.
 
-Example pattern:
-
-time.addEvent({
-delay: spawnInterval,
-loop: true,
-callback: spawnEnemyIfUnderCap
-})
+### Destructible Cover
+*   **Concept**: Crates and barriers that can be destroyed by heavy weapons or enemies.
 
 ---
 
-## SYSTEM 3 — BOSS SYSTEM
+## Weapon Mods (Temporary Power-ups)
 
-Create:
-Boss.js (base class)
-
-Boss state machine:
-
-IDLE
-SELECT_ATTACK
-TELEGRAPH
-EXECUTE
-COOLDOWN
-
-Boss Rage Mode:
-Trigger when HP <= 40%.
-
-Boss HP formula:
-
-getBossHP(levelId){
-return 600 + (levelId * 120);
-}
-
-Implement Level 5 boss:
-"The Butcher"
-
-Attacks:
-Charge
-Ground Slam
-Hook Throw
-
-Each attack must include:
-
-* telegraph time
-* damage value
-* cooldown
+Spawn as rare drops:
+*   **Ricochet Rounds**: Bullets bounce off walls and enemies.
+*   **Vampiric Touch**: Heal 1 HP per kill for 10 seconds.
+*   **Frostbite**: Slows enemies on hit.
+*   **Double Tap**: Fires an immediate second shot for free.
 
 ---
 
-## SYSTEM 4 — META UPGRADE SYSTEM
+## Mini-Map System
 
-Create:
-MetaUpgradeManager.js
-
-Currency: Z-Coins
-
-Coins earned formula:
-
-getCoins(levelId, kills){
-return Math.floor(levelId * 5 + kills * 0.8);
-}
-
-Upgrade cost scaling:
-
-getUpgradeCost(baseCost, level){
-return Math.floor(baseCost * Math.pow(1.35, level));
-}
-
-Persistent upgrades must save using LocalStorage.
-
-Upgrades:
-Damage Boost
-Fire Rate
-Move Speed
-Max HP
-Coin Magnet
+*   **UI Element**: Small radar in the corner.
+*   **Indicators**:
+    *   Red dots: Enemies.
+    *   Yellow Star: Objective / Boss.
+    *   Green Cross: Health pack.
+*   **Fog of War**: Only show nearby area (optional complexity).
 
 ---
 
-## SYSTEM 5 — DIFFICULTY SCALING
+## Boss Mechanics: Multi-Stage Fights
 
-Replace static enemy stats with scaling formulas.
-
-Enemy HP:
-25 + level * 3
-
-Enemy speed:
-40 + level * 1.5
-
-Spawn rate:
-max(600, 1800 − level * 40)
-
-Player expected DPS:
-18 + level * 2.2
-
-XP curve:
-40 * (1.18^playerLevel)
-
-These formulas must be used globally.
+Bosses should now have health thresholds (e.g., 50% HP) that trigger:
+*   **Phase Shift**: Change in color/appearance.
+*   **New Attack**: Unlocks a more dangerous move.
+*   **Minion Spawn**: Summons a wave of elite enemies.
 
 ---
 
-## SYSTEM 6 — LEVEL TRANSITION FLOW
+## Achievement System
 
-When level ends:
-
-* Stop spawning
-* Kill remaining enemies
-* Show "STAGE CLEAR"
-* Award coins
-* Load next level
-
-Boss levels:
-Lock arena until boss defeated.
+Track and reward player milestones:
+*   "Zombie Hunter": Kill 1000 zombies.
+*   "Survivor": Reach Level 10 without taking damage.
+*   "Pyromaniac": Kill 50 enemies to fire.
 
 ---
 
-## SYSTEM 7 — LEADERBOARD
+## Performance Considerations
 
-Use LocalStorage.
-
-Store:
-score
-levelsCompleted
-date
-
-Display top 10 scores.
+*   **AI**: Keep AI checks efficient (don't run complex pathfinding every frame).
+*   **Physics**: Use simple bounding boxes for environment interactions.
+*   **Rendering**: Ensure the mini-map doesn't cause a massive FPS drop (update less frequently than the game loop).
 
 ---
 
-## PERFORMANCE RULES
+## Completion Criteria
 
-Must support mobile browsers.
-
-Limits:
-Max enemies on screen: 25
-Boss sprites: ≤3
-Stable 60 FPS
-Object pooling required
-
-Avoid expensive physics operations.
-
----
-
-## COMPLETION CRITERIA
-
-Implementation is complete when:
-
-* Levels 1–30 playable
-* Boss fights occur at correct intervals
-* Meta upgrades persist between runs
-* Difficulty scales with level
-* Leaderboard works
-* Game runs smoothly on mobile
-
-Do not redesign mechanics.
-Implement systems exactly as defined.
+Phase 5 is complete when:
+1.  Shield Bearer and Stalker enemies are functional.
+2.  Explosive barrels are placed in levels.
+3.  At least 2 weapon mods are implemented.
+4.  The Mini-Map is visible and accurate.
+5.  Bosses have distinct phases.
